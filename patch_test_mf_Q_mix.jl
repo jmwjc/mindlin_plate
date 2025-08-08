@@ -53,14 +53,16 @@ gmsh.initialize()
 # @timeit to "open msh file" gmsh.open("msh/patchtest_3.msh")
 # @timeit to "get nodes" nodes_s = get𝑿ᵢ()
 
-integrationOrder = 2
+integrationOrder = 3
 # ──────────────────────────────────────────────────────────
 type_w = :tri3
 type_φ = :tri3
 type_Q = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type = eval(type_Q)
 ndiv = 4
-ndiv_q = 4
+XLSX.openxlsx("xls/patchtest.xlsx", mode="w") do xf
+for ndiv_q = 4:32
+row = ndiv_q-2
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_q.msh")
 @timeit to "get nodes" nodes_q = get𝑿ᵢ()
 @timeit to "get entities" entities = getPhysicalGroups()
@@ -69,7 +71,7 @@ yᵛ = nodes_q.y
 zᵛ = nodes_q.z
 sp = RegularGrid(xᵛ,yᵛ,zᵛ,n = 3,γ = 5)
 nᵛ = length(nodes_q)
-s = 1/ndiv
+s = 1/ndiv_q
 s₁ = 1.5*s*ones(nᵛ)
 s₂ = 1.5*s*ones(nᵛ)
 s₃ = 1.5*s*ones(nᵛ)
@@ -227,8 +229,6 @@ push!(nodes_q,:q₁=>d[2*nᵠ+nʷ+1:2:end], :q₂=>d[2*nᵠ+nʷ+2:2:end])
     L₂_Q = L₂Q(elements_q)
 end
 
-gmsh.finalize()
-
 points = zeros(3, nᵛ)
 for node in nodes_q
     I = node.𝐼
@@ -245,14 +245,12 @@ vtk_grid("vtk/square.vtu", points, cells) do vtk
     vtk["Q̄₂"] = [Q₂(node.x,node.y,node.z) for node in nodes_q]
 end
 
-println(to)
+# println(to)
 
 println("L₂ error of w: ", L₂_w)
 println("L₂ error of φ: ", L₂_φ)
 println("L₂ error of Q: ", L₂_Q)
 # ──────────────────────────────────────────────────────────
-row += 1
-XLSX.openxlsx("xls/patchtest.xlsx", mode="w") do xf
     sheet = xf[1]
     XLSX.rename!(sheet, "new_sheet")
     sheet["A1"] = "type w"
@@ -274,4 +272,7 @@ XLSX.openxlsx("xls/patchtest.xlsx", mode="w") do xf
     sheet["H$row"] = L₂_φ
     sheet["I$row"] = L₂_Q
 end
+end
+gmsh.finalize()
+
 
