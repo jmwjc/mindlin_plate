@@ -55,13 +55,13 @@ gmsh.initialize()
 
 integrationOrder = 3
 # ──────────────────────────────────────────────────────────
-type_w = :tri3
+type_w = :tri6
 type_φ = :tri3
 type_Q = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type = eval(type_Q)
 ndiv = 4
 XLSX.openxlsx("xls/patchtest.xlsx", mode="w") do xf
-for ndiv_q = 4:32
+for ndiv_q = 8:42
 row = ndiv_q-2
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_q.msh")
 @timeit to "get nodes" nodes_q = get𝑿ᵢ()
@@ -83,7 +83,7 @@ push!(nodes_q,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
     @timeit to "calculate shape functions" set𝝭!(elements_q)
 end
 # ─── Rotation ─────────────────────────────────────────────
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_$type_φ"*"_$ndiv.msh")
 @timeit to "get nodes" nodes_φ = get𝑿ᵢ()
 @timeit to "get entities" entities = getPhysicalGroups()
 
