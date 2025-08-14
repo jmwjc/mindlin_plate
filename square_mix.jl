@@ -1,6 +1,6 @@
 using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements
-import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂, L₂φ
+import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂, L₂φ, L₂Q
 
 using TimerOutputs, WriteVTK 
 import Gmsh: gmsh
@@ -27,7 +27,7 @@ gmsh.initialize()
 # @timeit to "open msh file" gmsh.open("msh/patchtest_3.msh")
 # @timeit to "get nodes" nodes_s = get𝑿ᵢ()
 
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_165.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_4.msh")
 @timeit to "get entities" entities = getPhysicalGroups()
 @timeit to "get nodes" nodes = get𝑿ᵢ()
 
@@ -55,7 +55,7 @@ integrationOrder = 2
     𝑎ᵛᵠ = ∫QφdΩ=>elements
     𝑎ᵛᵛ = ∫QQdΩ=>elements
     𝑎ᵛʷ = [
-        ∫QwdΩ=>elements,
+        ∫∇QwdΩ=>elements,
         ∫QwdΓ=>elements_Γ,
     ]
     𝑓ʷ = ∫wqdΩ=>elements

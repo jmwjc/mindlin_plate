@@ -1,13 +1,13 @@
 using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements
-import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂, L₂φ, L₂Q
+import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂, L₂φ, L₂Q
 
 using TimerOutputs, WriteVTK 
 import Gmsh: gmsh
 
 E = 10.92e6
 ν = 0.3
-h = 1e-4
+h = 1e-0
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -27,13 +27,13 @@ gmsh.initialize()
 # @timeit to "open msh file" gmsh.open("msh/patchtest_3.msh")
 # @timeit to "get nodes" nodes_s = get𝑿ᵢ()
 
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_564.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_8.msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()
 xʷ = nodes_w.x
 yʷ = nodes_w.y
 zʷ = nodes_w.z
 sp = RegularGrid(xʷ,yʷ,zʷ,n = 3,γ = 5)
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_564.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_16.msh")
 @timeit to "get nodes" nodes = get𝑿ᵢ()
 @timeit to "get entities" entities = getPhysicalGroups()
 
@@ -41,7 +41,7 @@ type = ReproducingKernel{:Linear2D,:□,:CubicSpline}
 nʷ = length(nodes_w)
 nᵠ = length(nodes)
 nᵛ = length(nodes)
-s = 0.05
+s = 0.25
 s₁ = 1.5*s*ones(nʷ)
 s₂ = 1.5*s*ones(nʷ)
 s₃ = 1.5*s*ones(nʷ)
@@ -56,7 +56,7 @@ fʷ = zeros(nʷ)
 fᵠ = zeros(2*nᵠ)
 fᵛ = zeros(2*nᵛ)
 
-integrationOrder = 2
+integrationOrder = 3
 @timeit to "calculate ∫κκdΩ" begin
     @timeit to "get elements" elements_w = getElements(nodes_w, entities["Ω"], type, integrationOrder, sp)
     @timeit to "get elements" elements = getElements(nodes, entities["Ω"], integrationOrder)
@@ -72,7 +72,7 @@ integrationOrder = 2
     𝑎ᵛᵠ = ∫QφdΩ=>elements
     𝑎ᵛᵛ = ∫QQdΩ=>elements
     𝑎ᵛʷ = [
-        ∫QwdΩ=>(elements,elements_w),
+        ∫∇QwdΩ=>(elements,elements_w),
         ∫QwdΓ=>(elements_Γ,elements_w_Γ),
     ]
     𝑓ʷ = ∫wqdΩ=>elements_w
