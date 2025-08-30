@@ -7,7 +7,7 @@ import Gmsh: gmsh
 
 E = 10.92e6
 ν = 0.3
-h = 1e-2
+h = 1e-0
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -59,9 +59,9 @@ integrationOrder = 2
         ∫QwdΓ=>elements_Γ,
     ]
     𝑓ʷ = ∫wqdΩ=>elements
-    @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
+    # @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
     @timeit to "assemble" 𝑎ᵛᵛ(kᵛᵛ)
-    @timeit to "assemble" 𝑎ᵛᵠ(kᵛᵠ)
+    # @timeit to "assemble" 𝑎ᵛᵠ(kᵛᵠ)
     @timeit to "assemble" 𝑎ᵛʷ(kᵛʷ)
     @timeit to "assemble" 𝑓ʷ(fʷ)
 end
@@ -87,24 +87,24 @@ end
     # @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
 end
 
-# dᵠ = zeros(2*nᵠ)
-# dᵛ = zeros(2*nᵛ)
-# dʷ = zeros(nʷ)
-# for node in nodes
-#     x = node.x
-#     y = node.y
-#     z = node.z
-#     dᵠ[2*node.𝐼-1] = φ₁(x,y,z)
-#     dᵠ[2*node.𝐼]   = φ₂(x,y,z)
-#     dᵛ[2*node.𝐼-1] = Q₁(x,y,z)
-#     dᵛ[2*node.𝐼]   = Q₂(x,y,z)
-#     dʷ[node.𝐼] = w(x,y,z)
-# end
+dᵠ = zeros(2*nᵠ)
+dᵛ = zeros(2*nᵛ)
+dʷ = zeros(nʷ)
+for node in nodes
+    x = node.x
+    y = node.y
+    z = node.z
+    dᵠ[2*node.𝐼-1] = φ₁(x,y,z)
+    dᵠ[2*node.𝐼]   = φ₂(x,y,z)
+    dᵛ[2*node.𝐼-1] = Q₁(x,y,z)
+    dᵛ[2*node.𝐼]   = Q₂(x,y,z)
+    dʷ[node.𝐼] = w(x,y,z)
+end
 # println(kᵛᵛ*dᵛ)
 # println(kᵛʷ*dʷ)
 # println(kᵛᵛ*dᵛ + kᵛʷ*dʷ)
 # println(kᵛʷ*ones(nʷ).-fᵛ)
-# println(kᵠᵠ*dᵠ + kᵛᵠ'*dᵛ - fᵠ)
+println(kᵠᵠ*dᵠ + kᵛᵠ'*dᵛ - fᵠ)
 # println(kᵛᵛ*dᵛ + kᵛᵠ*dᵠ + kᵛʷ*dʷ - fᵛ)
 # println(kᵛʷ'*dᵛ + kʷʷ*dʷ - fʷ)
 # println(kᵛᵠ*dᵠ)
@@ -113,41 +113,41 @@ end
 # println(kᵛᵛ*dᵛ + kᵛʷ*dʷ)
 
 # println([kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]*[dᵠ;dʷ;dᵛ] .- [fᵠ;fʷ;fᵛ])
-@timeit to "solve" d = [kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]\[fᵠ;fʷ;fᵛ]
+# @timeit to "solve" d = [kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]\[fᵠ;fʷ;fᵛ]
 # println([kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]*d .- [fᵠ;fʷ;fᵛ])
-push!(nodes,:d=>d[2*nᵠ+1:2*nᵠ+nʷ], :d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ], :q₁=>d[2*nᵠ+nʷ+1:2:end], :q₂=>d[2*nᵠ+nʷ+2:2:end])
+# push!(nodes,:d=>d[2*nᵠ+1:2*nᵠ+nʷ], :d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ], :q₁=>d[2*nᵠ+nʷ+1:2:end], :q₂=>d[2*nᵠ+nʷ+2:2:end])
 
-@timeit to "calculate error" begin
-    @timeit to "get elements" elements = getElements(nodes, entities["Ω"], 10)
-    prescribe!(elements, :E=>E, :ν=>ν, :h=>h, :u=>w, :φ₁=>φ₁, :φ₂=>φ₂, :Q₁=>Q₁, :Q₂=>Q₂)
-    @timeit to "calculate shape functions" set𝝭!(elements)
-    L₂_w = L₂(elements)
-    L₂_φ = L₂φ(elements)
-    L₂_Q = L₂Q(elements)
-end
+# @timeit to "calculate error" begin
+#     @timeit to "get elements" elements = getElements(nodes, entities["Ω"], 10)
+#     prescribe!(elements, :E=>E, :ν=>ν, :h=>h, :u=>w, :φ₁=>φ₁, :φ₂=>φ₂, :Q₁=>Q₁, :Q₂=>Q₂)
+#     @timeit to "calculate shape functions" set𝝭!(elements)
+#     L₂_w = L₂(elements)
+#     L₂_φ = L₂φ(elements)
+#     L₂_Q = L₂Q(elements)
+# end
 
 gmsh.finalize()
 
-points = zeros(3, nʷ)
-for node in nodes
-    I = node.𝐼
-    points[1,I] = node.x
-    points[2,I] = node.y
-    points[3,I] = node.z
-end
-# cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE, [node.𝐼 for node in elm.𝓒]) for elm in elements]
-cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE_STRIP, [node.𝐼 for node in elm.𝓒]) for elm in elements]
-vtk_grid("vtk/square.vtu", points, cells) do vtk
-    vtk["Q₁"] = [node.q₁ for node in nodes]
-    vtk["Q₂"] = [node.q₂ for node in nodes]
-    vtk["Q̄₁"] = [Q₁(node.x,node.y,node.z) for node in nodes]
-    vtk["Q̄₂"] = [Q₂(node.x,node.y,node.z) for node in nodes]
-end
+# points = zeros(3, nʷ)
+# for node in nodes
+#     I = node.𝐼
+#     points[1,I] = node.x
+#     points[2,I] = node.y
+#     points[3,I] = node.z
+# end
+# # cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE, [node.𝐼 for node in elm.𝓒]) for elm in elements]
+# cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE_STRIP, [node.𝐼 for node in elm.𝓒]) for elm in elements]
+# vtk_grid("vtk/square.vtu", points, cells) do vtk
+#     vtk["Q₁"] = [node.q₁ for node in nodes]
+#     vtk["Q₂"] = [node.q₂ for node in nodes]
+#     vtk["Q̄₁"] = [Q₁(node.x,node.y,node.z) for node in nodes]
+#     vtk["Q̄₂"] = [Q₂(node.x,node.y,node.z) for node in nodes]
+# end
 
-println(to)
+# println(to)
 
-println("L₂ error of w: ", L₂_w)
-println("L₂ error of φ: ", L₂_φ)
-println("L₂ error of Q: ", L₂_Q)
+# println("L₂ error of w: ", L₂_w)
+# println("L₂ error of φ: ", L₂_φ)
+# println("L₂ error of Q: ", L₂_Q)
 
 

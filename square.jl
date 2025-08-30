@@ -7,7 +7,7 @@ import Gmsh: gmsh
 
 E = 1.0
 ν = 0.3
-h = 1e-1
+h = 1e-0
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -20,7 +20,7 @@ q(x,y,z) = E*h^3/(12*(1-ν^2))*(12*y*(y-1)*(5*x^2-5*x+1)*(2*y^2*(y-1)^2+x*(x-1)*
 const to = TimerOutput()
 
 gmsh.initialize()
-@timeit to "open msh file" gmsh.open("msh/patchtest.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_16.msh")
 @timeit to "get entities" entities = getPhysicalGroups()
 @timeit to "get nodes" nodes = get𝑿ᵢ()
 
@@ -77,7 +77,7 @@ push!(nodes,:d=>d[2*nᵠ+1:end], :d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ])
     @timeit to "calculate shape functions" set𝝭!(elements)
     L₂_w = L₂(elements)
     L₂_φ = L₂φ(elements)
-    L₂_Q = L₂Q(elements)
+    # L₂_Q = L₂Q(elements)
 end
  
 gmsh.finalize()

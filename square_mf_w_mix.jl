@@ -7,7 +7,7 @@ import Gmsh: gmsh
 
 E = 10.92e6
 ν = 0.3
-h = 1e-0
+h = 1e-5
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -30,10 +30,10 @@ type_w = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_φ = :tri3
 type_q = :(PiecewisePolynomial{:Linear2D})
 # type_q = :(PiecewisePolynomial{:Quadratic2D})
-ndiv = 16
-# ndiv_w = 4
+ndiv = 8
+# ndiv_w = 16
 XLSX.openxlsx("xls/square.xlsx", mode="w") do xf
-for ndiv_w = 2:42
+for ndiv_w = 2:32
 row = ndiv_w
 # ──────────────────────────────────────────────────────────
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
@@ -75,9 +75,9 @@ fᵛ = zeros(2*nᵛ)
     @timeit to "get elements" elements_w_Γ = getElements(nodes_w, entities["Γ"], eval(type_w), integrationOrder, sp, normal=true)
     @timeit to "get elements" elements_q_Γ = getPiecewiseBoundaryElements(entities["Γ"], entities["Ω"], eval(type_q), integrationOrder)
     @timeit to "get elements" elements_φ_Γ = getElements(nodes_φ, entities["Γ"], integrationOrder, normal=true)
-    prescribe!(elements_φ, :E=>E, :ν=>ν, :h=>h, :m₁=>m₁, :m₂=>m₂)
+    prescribe!(elements_φ, :E=>E, :ν=>ν, :h=>h)
     prescribe!(elements_q, :E=>E, :ν=>ν, :h=>h)
-    prescribe!(elements_w, :E=>E, :ν=>ν, :h=>h, :m₁=>m₁, :m₂=>m₂, :q=>q)
+    prescribe!(elements_w, :E=>E, :ν=>ν, :h=>h, :q=>q)
     @timeit to "calculate shape functions" set∇𝝭!(elements_φ)
     @timeit to "calculate shape functions" set∇𝝭!(elements_q)
     @timeit to "calculate shape functions" set∇𝝭!(elements_w)
@@ -92,14 +92,14 @@ fᵛ = zeros(2*nᵛ)
         ∫∇QwdΩ=>(elements_q,elements_w),
         ∫QwdΓ=>(elements_q_Γ,elements_w_Γ),
     ]
-    𝑓ᵠ = ∫φmdΩ=>elements_φ
+    # 𝑓ᵠ = ∫φmdΩ=>elements_φ
     𝑓ʷ = ∫wqdΩ=>elements_w
     @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
     @timeit to "assemble" 𝑎ᵛᵛ(kᵛᵛ)
     @timeit to "assemble" 𝑎ᵛᵠ(kᵛᵠ)
     @timeit to "assemble" 𝑎ᵛʷ(kᵛʷ)
     @timeit to "assemble" 𝑓ʷ(fʷ)
-    @timeit to "assemble" 𝑓ᵠ(fᵠ)
+    # @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
 @timeit to "calculate ∫αφφdΓ" begin
@@ -227,7 +227,7 @@ end
 #     vtk["Q̄₂"] = [Q₂(node.x,node.y,node.z) for node in nodes_q]
 # end
 
-println(to)
+# println(to)
 
 println("L₂ error of w: ", L₂_w)
 println("L₂ error of φ: ", L₂_φ)

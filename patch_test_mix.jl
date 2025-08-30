@@ -1,34 +1,52 @@
 using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements
-import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂, L₂φ, L₂Q
+import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂, L₂φ, L₂Q
 
 using TimerOutputs, WriteVTK 
 import Gmsh: gmsh
 
 E = 1.0
 ν = 0.3
-h = 1e-5
+h = 1e-0
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
-r = 3
-w(x,y,z) = (x+y)^r
-w₁(x,y,z) = r*(x+y)^abs(r-1)
-w₂(x,y,z) = r*(x+y)^abs(r-1)
-w₁₁(x,y,z) = r*(r-1)*(x+y)^abs(r-2)
-w₂₂(x,y,z) = r*(r-1)*(x+y)^abs(r-2)
-φ₁(x,y,z) = (x+y)^r
-φ₂(x,y,z) = (x+y)^r
-φ₁₁(x,y,z)  = r*(x+y)^abs(r-1)
-φ₁₂(x,y,z)  = r*(x+y)^abs(r-1)
-φ₂₁(x,y,z)  = r*(x+y)^abs(r-1)
-φ₂₂(x,y,z)  = r*(x+y)^abs(r-1)
-φ₁₁₁(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
-φ₁₁₂(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
-φ₂₂₁(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
-φ₂₂₂(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
-φ₁₂₁(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
-φ₁₂₂(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
+w(x,y,z) = 1.0+x+y
+w₁(x,y,z) = 1.0
+w₂(x,y,z) = 1.0
+w₁₁(x,y,z) = 0.0
+w₂₂(x,y,z) = 0.0
+φ₁(x,y,z) = 1.0+x+y
+φ₂(x,y,z) = 1.0+x+y
+φ₁₁(x,y,z)  = 1.0
+φ₁₂(x,y,z)  = 1.0
+φ₂₁(x,y,z)  = 1.0
+φ₂₂(x,y,z)  = 1.0
+φ₁₁₁(x,y,z)  = 0.0
+φ₁₁₂(x,y,z)  = 0.0
+φ₂₂₁(x,y,z)  = 0.0
+φ₂₂₂(x,y,z)  = 0.0
+φ₁₂₁(x,y,z)  = 0.0
+φ₁₂₂(x,y,z)  = 0.0
+
+# r = 1
+# w(x,y,z) = (x+y)^r
+# w₁(x,y,z) = r*(x+y)^abs(r-1)
+# w₂(x,y,z) = r*(x+y)^abs(r-1)
+# w₁₁(x,y,z) = r*(r-1)*(x+y)^abs(r-2)
+# w₂₂(x,y,z) = r*(r-1)*(x+y)^abs(r-2)
+# φ₁(x,y,z) = (x+y)^r
+# φ₂(x,y,z) = (x+y)^r
+# φ₁₁(x,y,z)  = r*(x+y)^abs(r-1)
+# φ₁₂(x,y,z)  = r*(x+y)^abs(r-1)
+# φ₂₁(x,y,z)  = r*(x+y)^abs(r-1)
+# φ₂₂(x,y,z)  = r*(x+y)^abs(r-1)
+# φ₁₁₁(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
+# φ₁₁₂(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
+# φ₂₂₁(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
+# φ₂₂₂(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
+# φ₁₂₁(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
+# φ₁₂₂(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
 
 M₁₁(x,y,z)= -Dᵇ*(φ₁₁(x,y,z)+ν*φ₂₂(x,y,z))
 M₁₂(x,y,z)= -Dᵇ*(1-ν)*0.5*(φ₁₂(x,y,z)+φ₂₁(x,y,z))
@@ -52,7 +70,7 @@ gmsh.initialize()
 # @timeit to "open msh file" gmsh.open("msh/patchtest_3.msh")
 # @timeit to "get nodes" nodes_s = get𝑿ᵢ()
 
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_165.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_4.msh")
 @timeit to "get entities" entities = getPhysicalGroups()
 @timeit to "get nodes" nodes = get𝑿ᵢ()
 
@@ -69,7 +87,7 @@ fʷ = zeros(nʷ)
 fᵠ = zeros(2*nᵠ)
 fᵛ = zeros(2*nᵛ)
 
-integrationOrder = 2
+integrationOrder = 3
 @timeit to "calculate ∫κκdΩ" begin
     @timeit to "get elements" elements = getElements(nodes, entities["Ω"], integrationOrder)
     @timeit to "get elements" elements_Γ = getElements(nodes, entities["Γ"], integrationOrder, normal=true)
@@ -77,11 +95,11 @@ integrationOrder = 2
     @timeit to "calculate shape functions" set∇𝝭!(elements)
     @timeit to "calculate shape functions" set𝝭!(elements_Γ)
     𝑎ᵠᵠ = ∫κκdΩ=>elements
-    𝑎ᵛᵠ = ∫QφdΩ=>elements
+    𝑎ᵛᵠ = ∫QφdΩ=>(elements,elements)
     𝑎ᵛᵛ = ∫QQdΩ=>elements
     𝑎ᵛʷ = [
-        ∫QwdΩ=>elements,
-        ∫QwdΓ=>elements_Γ,
+        ∫∇QwdΩ=>(elements,elements),
+        ∫QwdΓ=>(elements_Γ,elements_Γ),
     ]
     𝑓ʷ = ∫wqdΩ=>elements
     𝑓ᵠ = ∫φmdΩ=>elements
@@ -108,26 +126,28 @@ end
     @timeit to "calculate shape functions" set𝝭!(elements_4)
     𝑎ᵠ = ∫αφφdΓ=>elements_1∪elements_2∪elements_3∪elements_4
     @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
-    𝑎ᵛ = ∫QwdΓ=>elements_1∪elements_2∪elements_3∪elements_4
+    𝑎ᵛ = ∫QwdΓ=>(elements_1∪elements_2∪elements_3∪elements_4,elements_1∪elements_2∪elements_3∪elements_4)
     @timeit to "assemble" 𝑎ᵛ(kᵛʷ,fᵛ)
     # 𝑎ʷ = ∫αwwdΓ=>elements_1∪elements_2∪elements_3∪elements_4
     # @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
 end
 
-# dᵠ = zeros(2*nᵠ)
-# dᵛ = zeros(2*nᵛ)
-# dʷ = zeros(nʷ)
-# for node in nodes
-#     x = node.x
-#     y = node.y
-#     z = node.z
-#     dᵠ[2*node.𝐼-1] = φ₁(x,y,z)
-#     dᵠ[2*node.𝐼]   = φ₂(x,y,z)
-#     dᵛ[2*node.𝐼-1] = Q₁(x,y,z)
-#     dᵛ[2*node.𝐼]   = Q₂(x,y,z)
-#     dʷ[node.𝐼] = w(x,y,z)
-# end
+dᵠ = zeros(2*nᵠ)
+dᵛ = zeros(2*nᵛ)
+dʷ = zeros(nʷ)
+for node in nodes
+    x = node.x
+    y = node.y
+    z = node.z
+    dᵠ[2*node.𝐼-1] = φ₁(x,y,z)
+    dᵠ[2*node.𝐼]   = φ₂(x,y,z)
+    dᵛ[2*node.𝐼-1] = Q₁(x,y,z)
+    dᵛ[2*node.𝐼]   = Q₂(x,y,z)
+    dʷ[node.𝐼] = w(x,y,z)
+end
 # println(kᵠᵠ*dᵠ+kᵛᵠ'*dᵛ - fᵠ)
+# err = kᵠᵠ*dᵠ+kᵛᵠ'*dᵛ - fᵠ
+# println(kᵠᵠ*dᵠ - fᵠ)
 # println(kᵠᵠ*dᵠ+kᵠʷ*dʷ+kᵛᵠ'*dᵛ - fᵠ)
 # println(kᵛᵛ*dᵛ)
 # println(kᵛʷ*dʷ)
@@ -141,7 +161,7 @@ end
 # println(kᵛᵛ*dᵛ)
 # println(kᵛᵛ*dᵛ + kᵛʷ*dʷ)
 
-# println([kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]*[dᵠ;dʷ;dᵛ] .- [fᵠ;fʷ;fᵛ])
+println(([kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]*[dᵠ;dʷ;dᵛ] .- [fᵠ;fʷ;fᵛ])[2*nᵠ+1:end])
 @timeit to "solve" d = [kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]\[fᵠ;fʷ;fᵛ]
 # println([kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]*d .- [fᵠ;fʷ;fᵛ])
 push!(nodes,:d=>d[2*nᵠ+1:2*nᵠ+nʷ], :d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ], :q₁=>d[2*nᵠ+nʷ+1:2:end], :q₂=>d[2*nᵠ+nʷ+2:2:end])
@@ -157,21 +177,21 @@ end
 
 gmsh.finalize()
 
-points = zeros(3, nʷ)
-for node in nodes
-    I = node.𝐼
-    points[1,I] = node.x
-    points[2,I] = node.y
-    points[3,I] = node.z
-end
-# cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE, [node.𝐼 for node in elm.𝓒]) for elm in elements]
-cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE_STRIP, [node.𝐼 for node in elm.𝓒]) for elm in elements]
-vtk_grid("vtk/patchtest.vtu", points, cells) do vtk
-    vtk["Q₁"] = [node.q₁ for node in nodes]
-    vtk["Q₂"] = [node.q₁ for node in nodes]
-end
+# points = zeros(3, nʷ)
+# for node in nodes
+#     I = node.𝐼
+#     points[1,I] = node.x
+#     points[2,I] = node.y
+#     points[3,I] = node.z
+# end
+# # cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE, [node.𝐼 for node in elm.𝓒]) for elm in elements]
+# cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE_STRIP, [node.𝐼 for node in elm.𝓒]) for elm in elements]
+# vtk_grid("vtk/patchtest.vtu", points, cells) do vtk
+#     vtk["Q₁"] = [node.q₁ for node in nodes]
+#     vtk["Q₂"] = [node.q₁ for node in nodes]
+# end
 
-println(to)
+# println(to)
 
 println("L₂ error of w: ", L₂_w)
 println("L₂ error of φ: ", L₂_φ)

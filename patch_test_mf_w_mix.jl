@@ -11,7 +11,7 @@ h = 1e-8
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
-r = 3
+r = 1
 w(x,y,z) = (x+y)^r
 w₁(x,y,z) = r*(x+y)^abs(r-1)
 w₂(x,y,z) = r*(x+y)^abs(r-1)
@@ -94,11 +94,11 @@ type_w = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_φ = :tri3
 # type_q = :(PiecewisePolynomial{:Linear2D})
 type_q = :(PiecewisePolynomial{:Quadratic2D})
-ndiv = 4
-# ndiv_w = 4
-XLSX.openxlsx("xls/patchtest.xlsx", mode="w") do xf
-for ndiv_w = 2:42
-row = ndiv_w
+ndiv = 8
+ndiv_w = 4
+# XLSX.openxlsx("xls/patchtest.xlsx", mode="w") do xf
+# for ndiv_w = 2:42
+# row = ndiv_w
 # ──────────────────────────────────────────────────────────
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()
@@ -297,28 +297,28 @@ println("L₂ error of w: ", L₂_w)
 println("L₂ error of φ: ", L₂_φ)
 println("L₂ error of Q: ", L₂_Q)
 # ──────────────────────────────────────────────────────────
-    sheet = xf[1]
-    XLSX.rename!(sheet, "new_sheet")
-    sheet["A1"] = "type w"
-    sheet["B1"] = "nʷ"
-    sheet["C1"] = "type φ"
-    sheet["D1"] = "nᵠ"
-    sheet["E1"] = "type Q"
-    sheet["F1"] = "nᵛ"
-    sheet["G1"] = "L₂w"
-    sheet["H1"] = "L₂φ"
-    sheet["I1"] = "L₂Q"
-    sheet["A$row"] = "$type_w"
-    sheet["B$row"] = nʷ
-    sheet["C$row"] = "$type_φ"
-    sheet["D$row"] = nᵠ
-    sheet["E$row"] = "$type_q"
-    sheet["F$row"] = nᵛ
-    sheet["G$row"] = log10(L₂_w)
-    sheet["H$row"] = log10(L₂_φ)
-    sheet["I$row"] = log10(L₂_Q)
-end
-end
+#     sheet = xf[1]
+#     XLSX.rename!(sheet, "new_sheet")
+#     sheet["A1"] = "type w"
+#     sheet["B1"] = "nʷ"
+#     sheet["C1"] = "type φ"
+#     sheet["D1"] = "nᵠ"
+#     sheet["E1"] = "type Q"
+#     sheet["F1"] = "nᵛ"
+#     sheet["G1"] = "L₂w"
+#     sheet["H1"] = "L₂φ"
+#     sheet["I1"] = "L₂Q"
+#     sheet["A$row"] = "$type_w"
+#     sheet["B$row"] = nʷ
+#     sheet["C$row"] = "$type_φ"
+#     sheet["D$row"] = nᵠ
+#     sheet["E$row"] = "$type_q"
+#     sheet["F$row"] = nᵛ
+#     sheet["G$row"] = log10(L₂_w)
+#     sheet["H$row"] = log10(L₂_φ)
+#     sheet["I$row"] = log10(L₂_Q)
+# end
+# end
 gmsh.finalize()
 
 
