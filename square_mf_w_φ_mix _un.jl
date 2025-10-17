@@ -38,16 +38,15 @@ type_φ = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
 # type_M = :(PiecewisePolynomial{:Quadratic2D})
-ndiv_φ = 16
-ndiv_w = 25
+ndiv_φ = 8
+ndiv_w = 10
 ndiv = ndiv_φ
- XLSX.openxlsx("xls/square_16_tri3_25
- .xlsx", mode="w") do xf
+ XLSX.openxlsx("xls/square_un_8_tri3_10.xlsx", mode="w") do xf
   for ndiv = ndiv_w:32
  # ndiv_w = ndiv
  row = ndiv
 # ─── Deflection W ─────────────────────────────────────────
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_un_tri3_$ndiv_w.msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()
 xʷ = nodes_w.x
 yʷ = nodes_w.y
@@ -60,7 +59,7 @@ s₂ = 1.5*s*ones(nʷ)
 s₃ = 1.5*s*ones(nʷ)
 push!(nodes_w,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
 # ─── Rotation Φ ───────────────────────────────────────────
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_φ.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_un_tri3_$ndiv_φ.msh")
 @timeit to "get nodes" nodes_φ = get𝑿ᵢ()
 xᵠ = nodes_φ.x
 yᵠ = nodes_φ.y

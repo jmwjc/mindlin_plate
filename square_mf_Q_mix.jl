@@ -33,11 +33,11 @@ type_w = :tri3
 type_φ = :tri3
 type_Q = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type = eval(type_Q)
-ndiv = 32
+ndiv =8
 ndiv_q = ndiv
-# XLSX.openxlsx("xls/square.xlsx", mode="w") do xf
-# for ndiv_q = 8:32
-# row = ndiv_q
+XLSX.openxlsx("xls/square_33_8_8.xlsx", mode="w") do xf
+ for ndiv_q = 8:32
+ row = ndiv_q
 
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_q.msh")
 @timeit to "get nodes" nodes_q = get𝑿ᵢ()
@@ -223,28 +223,28 @@ end
 println("L₂ error of w: ", L₂_w)
 println("L₂ error of φ: ", L₂_φ)
 println("L₂ error of Q: ", L₂_Q)
-    # ──────────────────────────────────────────────────────────
-    # sheet = xf[1]
-    # XLSX.rename!(sheet, "new_sheet")
-    # sheet["A1"] = "type w"
-    # sheet["B1"] = "nʷ"
-    # sheet["C1"] = "type φ"
-    # sheet["D1"] = "nᵠ"
-    # sheet["E1"] = "type Q"
-    # sheet["F1"] = "nᵛ"
-    # sheet["G1"] = "L₂w"
-    # sheet["H1"] = "L₂φ"
-    # sheet["I1"] = "L₂Q"
-    # sheet["A$row"] = "$type_w"
-    # sheet["B$row"] = nʷ
-    # sheet["C$row"] = "$type_φ"
-    # sheet["D$row"] = nᵠ
-    # sheet["E$row"] = "$type_Q"
-    # sheet["F$row"] = nᵛ
-    # sheet["G$row"] = log10(L₂_w)
-    # sheet["H$row"] = log10(L₂_φ)
-    # sheet["I$row"] = log10(L₂_Q)
-# end
+     # ──────────────────────────────────────────────────────────
+     sheet = xf[1]
+     XLSX.rename!(sheet, "new_sheet")
+     sheet["A1"] = "type w"
+     sheet["B1"] = "nʷ"
+     sheet["C1"] = "type φ"
+     sheet["D1"] = "nᵠ"
+     sheet["E1"] = "type Q"
+     sheet["F1"] = "nᵛ"
+     sheet["G1"] = "L₂w"
+     sheet["H1"] = "L₂φ"
+     sheet["I1"] = "L₂Q"
+     sheet["A$row"] = "$type_w"
+     sheet["B$row"] = nʷ
+     sheet["C$row"] = "$type_φ"
+     sheet["D$row"] = nᵠ
+     sheet["E$row"] = "$type_Q"
+     sheet["F$row"] = nᵛ
+     sheet["G$row"] = log10(L₂_w)
+     sheet["H$row"] = log10(L₂_φ)
+     sheet["I$row"] = log10(L₂_Q)
+ end
     # end
     gmsh.finalize()
-# end
+ end
