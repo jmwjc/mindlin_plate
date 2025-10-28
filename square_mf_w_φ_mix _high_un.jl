@@ -60,10 +60,10 @@ type_M = :(PiecewisePolynomial{:Linear2D})
 ndiv_φ = 16
 ndiv_w = 16
 ndiv = ndiv_φ
- XLSX.openxlsx("xls/square_high_un_16_tri3_16.xlsx", mode="w") do xf
-  for ndiv = ndiv_w:32
- # ndiv_w = ndiv
- row = ndiv
+XLSX.openxlsx("xls/square_high_un_16_tri3_16.xlsx", mode="w") do xf
+for ndiv = ndiv_w:32
+# ndiv_w = ndiv
+row = ndiv
 # ─── Deflection W ─────────────────────────────────────────
 @timeit to "open msh file" gmsh.open("msh/patchtest_high_un_tri3_$ndiv_w.msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()
@@ -71,15 +71,16 @@ ndiv = ndiv_φ
 @timeit to "calculate support domain" begin
     elements_support = getElements(nodes_w, entities_w["Ω"], 1) 
     s_w, var_A = cal_area_support(elements_support)
-γ = 3  # 可调整的系数
-s_val = γ * s_w
-nʷ = length(nodes_w)
+    println(s_w)
+    γ = 3  # 可调整的系数
+    s_val = γ * s_w
+    nʷ = length(nodes_w)
     push!(nodes_w, :s₁ => s_val * ones(nʷ), :s₂ => s_val * ones(nʷ), :s₃ => s_val * ones(nʷ))
 end
-#xʷ = nodes_w.x
-#yʷ = nodes_w.y
-#zʷ = nodes_w.z
-#sp_w = RegularGrid(xʷ,yʷ,zʷ,n = 3,γ = 5)
+xʷ = nodes_w.x
+yʷ = nodes_w.y
+zʷ = nodes_w.z
+sp_w = RegularGrid(xʷ,yʷ,zʷ,n = 3,γ = 5)
 #nʷ = length(nodes_w)
 #s = 1/ndiv_w
 #s₁ = 1.5*s*ones(nʷ)
@@ -93,15 +94,15 @@ end
 @timeit to "calculate support domain" begin
     elements_support = getElements(nodes_φ, entities_φ["Ω"], 1)
     s_φ, var_A = cal_area_support(elements_support)
-γ = 3 # 可调整的系数
-s_val = γ * s_φ
-nᵠ = length(nodes_φ)
+    γ = 3 # 可调整的系数
+    s_val = γ * s_φ
+    nᵠ = length(nodes_φ)
     push!(nodes_φ, :s₁ => s_val * ones(nᵠ), :s₂ => s_val * ones(nᵠ), :s₃ => s_val * ones(nᵠ))
 end
-#xᵠ = nodes_φ.x
-#yᵠ = nodes_φ.y
-#zᵠ = nodes_φ.z
-#sp_φ = RegularGrid(xᵠ,yᵠ,zᵠ,n = 3,γ = 5)
+xᵠ = nodes_φ.x
+yᵠ = nodes_φ.y
+zᵠ = nodes_φ.z
+sp_φ = RegularGrid(xᵠ,yᵠ,zᵠ,n = 3,γ = 5)
 #nᵠ = length(nodes_φ)
 #s = 1/ndiv_φ
 #s₁ = 1.5*s*ones(nᵠ)
@@ -129,7 +130,7 @@ fˢ = zeros(2*nˢ)
     prescribe!(elements_q, :E=>E, :ν=>ν, :h=>h)
     @timeit to "calculate shape functions" set∇𝝭!(elements_q)
 
-    @timeit to "get elements" elements_w = getElements(nodes_w, entities_w["Ω"], eval(type_w), integrationOrder) #, sp_w)
+    @timeit to "get elements" elements_w = getElements(nodes_w, entities_w["Ω"], eval(type_w), integrationOrder, sp_w)
     prescribe!(elements_w, :E=>E, :ν=>ν, :h=>h, :q=>q)
     @timeit to "calculate shape functions" set𝝭!(elements_w)
 
