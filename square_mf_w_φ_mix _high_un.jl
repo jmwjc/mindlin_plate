@@ -58,9 +58,9 @@ type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
 # type_M = :(PiecewisePolynomial{:Quadratic2D})
 ndiv_φ = 16
-ndiv_w = 16
+ndiv_w = 25
 ndiv = ndiv_φ
-XLSX.openxlsx("xls/square_high_un_16_tri3_16.xlsx", mode="w") do xf
+XLSX.openxlsx("xls/square_high_un_16_tri3_25.xlsx", mode="w") do xf
 for ndiv = ndiv_w:32
 # ndiv_w = ndiv
 row = ndiv
@@ -72,7 +72,7 @@ row = ndiv
     elements_support = getElements(nodes_w, entities_w["Ω"], 1) 
     s_w, var_A = cal_area_support(elements_support)
     println(s_w)
-    γ = 3  # 可调整的系数
+    γ = 1.5  # 可调整的系数
     s_val = γ * s_w
     nʷ = length(nodes_w)
     push!(nodes_w, :s₁ => s_val * ones(nʷ), :s₂ => s_val * ones(nʷ), :s₃ => s_val * ones(nʷ))
@@ -94,7 +94,7 @@ sp_w = RegularGrid(xʷ,yʷ,zʷ,n = 3,γ = 5)
 @timeit to "calculate support domain" begin
     elements_support = getElements(nodes_φ, entities_φ["Ω"], 1)
     s_φ, var_A = cal_area_support(elements_support)
-    γ = 3 # 可调整的系数
+    γ = 1.5 # 可调整的系数
     s_val = γ * s_φ
     nᵠ = length(nodes_φ)
     push!(nodes_φ, :s₁ => s_val * ones(nᵠ), :s₂ => s_val * ones(nᵠ), :s₃ => s_val * ones(nᵠ))
@@ -134,7 +134,7 @@ fˢ = zeros(2*nˢ)
     prescribe!(elements_w, :E=>E, :ν=>ν, :h=>h, :q=>q)
     @timeit to "calculate shape functions" set𝝭!(elements_w)
 
-    @timeit to "get elements" elements_w_Γ = getElements(nodes_w, entities_w["Γ"], eval(type_w), integrationOrder, normal=true) #sp_w,
+    @timeit to "get elements" elements_w_Γ = getElements(nodes_w, entities_w["Γ"], eval(type_w), integrationOrder, normal=true , sp_w)
     @timeit to "calculate shape functions" set𝝭!(elements_w_Γ)
 
     @timeit to "get elements" elements_q_Γ = getElements(nodes, entities["Γ"], integrationOrder, normal=true)
@@ -164,11 +164,11 @@ fᵐ = zeros(3*nᵐ)
     prescribe!(elements_m, :E=>E, :ν=>ν, :h=>h)
     @timeit to "calculate shape functions" set∇𝝭!(elements_m)
 
-    @timeit to "get elements" elements_φ = getElements(nodes_φ, entities_φ["Ω"], eval(type_φ), integrationOrder) #, sp_φ)
+    @timeit to "get elements" elements_φ = getElements(nodes_φ, entities_φ["Ω"], eval(type_φ), integrationOrder, sp_φ)
     prescribe!(elements_φ, :E=>E, :ν=>ν, :h=>h)
     @timeit to "calculate shape functions" set𝝭!(elements_φ)
 
-    @timeit to "get elements" elements_φ_Γ = getElements(nodes_φ, entities_φ["Γ"], eval(type_φ), integrationOrder, normal=true) # sp_φ,
+    @timeit to "get elements" elements_φ_Γ = getElements(nodes_φ, entities_φ["Γ"], eval(type_φ), integrationOrder, sp_φ, normal=true) 
     @timeit to "calculate shape functions" set𝝭!(elements_φ_Γ)
 
     @timeit to "get elements" elements_m_Γ = getPiecewiseBoundaryElements(entities["Γ"], entities["Ω"], eval(type_M), integrationOrder)
@@ -192,10 +192,10 @@ end
     @timeit to "get elements" elements_q_2 = getElements(nodes, entities["Γ²"], integrationOrder, normal=true)
     @timeit to "get elements" elements_q_3 = getElements(nodes, entities["Γ³"], integrationOrder, normal=true)
     @timeit to "get elements" elements_q_4 = getElements(nodes, entities["Γ⁴"], integrationOrder, normal=true)
-    @timeit to "get elements" elements_w_1 = getElements(nodes_w, entities_w["Γ¹"], eval(type_w), integrationOrder, normal=true) #sp_w,
-    @timeit to "get elements" elements_w_2 = getElements(nodes_w, entities_w["Γ²"], eval(type_w), integrationOrder, normal=true) #sp_w,
-    @timeit to "get elements" elements_w_3 = getElements(nodes_w, entities_w["Γ³"], eval(type_w), integrationOrder, normal=true) #sp_w,
-    @timeit to "get elements" elements_w_4 = getElements(nodes_w, entities_w["Γ⁴"], eval(type_w), integrationOrder, normal=true) #sp_w,
+    @timeit to "get elements" elements_w_1 = getElements(nodes_w, entities_w["Γ¹"], eval(type_w), integrationOrder, sp_w,normal=true)
+    @timeit to "get elements" elements_w_2 = getElements(nodes_w, entities_w["Γ²"], eval(type_w), integrationOrder, sp_w,normal=true) 
+    @timeit to "get elements" elements_w_3 = getElements(nodes_w, entities_w["Γ³"], eval(type_w), integrationOrder, sp_w,normal=true) 
+    @timeit to "get elements" elements_w_4 = getElements(nodes_w, entities_w["Γ⁴"], eval(type_w), integrationOrder, sp_w,normal=true) 
     prescribe!(elements_w_1, :α=>1e8*E, :g=>w)
     prescribe!(elements_w_2, :α=>1e8*E, :g=>w)
     prescribe!(elements_w_3, :α=>1e8*E, :g=>w)
@@ -217,10 +217,10 @@ end
     @timeit to "get elements" elements_m_2 = getElements(entities["Γ²"], entities["Γ"], elements_m_Γ)
     @timeit to "get elements" elements_m_3 = getElements(entities["Γ³"], entities["Γ"], elements_m_Γ)
     @timeit to "get elements" elements_m_4 = getElements(entities["Γ⁴"], entities["Γ"], elements_m_Γ)
-    @timeit to "get elements" elements_φ_1 = getElements(nodes_φ, entities_φ["Γ¹"], eval(type_φ), integrationOrder,  normal=true) #sp_φ,
-    @timeit to "get elements" elements_φ_2 = getElements(nodes_φ, entities_φ["Γ²"], eval(type_φ), integrationOrder,  normal=true) #sp_φ,
-    @timeit to "get elements" elements_φ_3 = getElements(nodes_φ, entities_φ["Γ³"], eval(type_φ), integrationOrder,  normal=true) #sp_φ,
-    @timeit to "get elements" elements_φ_4 = getElements(nodes_φ, entities_φ["Γ⁴"], eval(type_φ), integrationOrder,  normal=true) #sp_φ,
+    @timeit to "get elements" elements_φ_1 = getElements(nodes_φ, entities_φ["Γ¹"], eval(type_φ), integrationOrder,  sp_φ,normal=true) 
+    @timeit to "get elements" elements_φ_2 = getElements(nodes_φ, entities_φ["Γ²"], eval(type_φ), integrationOrder,  sp_φ,normal=true) 
+    @timeit to "get elements" elements_φ_3 = getElements(nodes_φ, entities_φ["Γ³"], eval(type_φ), integrationOrder,  sp_φ,normal=true) 
+    @timeit to "get elements" elements_φ_4 = getElements(nodes_φ, entities_φ["Γ⁴"], eval(type_φ), integrationOrder,  sp_φ,normal=true) 
     prescribe!(elements_φ_1, :α=>1e8*E, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
     prescribe!(elements_φ_2, :α=>1e8*E, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
     prescribe!(elements_φ_3, :α=>1e8*E, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
@@ -277,8 +277,8 @@ push!(nodes,:q₁=>d[2*nᵠ+nʷ+1:2:2*nᵠ+nʷ+2*nˢ], :q₂=>d[2*nᵠ+nʷ+2:2:2
 push!(nodes,:m₁₁=>d[2*nᵠ+nʷ+2*nˢ+1:3:end],:m₂₂=>d[2*nᵠ+nʷ+2*nˢ+2:3:end],:m₁₂=>d[2*nᵠ+nʷ+2*nˢ+3:3:end])
 # ──────────────────────────────────────────────────────────
 @timeit to "calculate error" begin
-    @timeit to "get elements" elements_φ = getElements(nodes_φ, entities_φ["Ω"], eval(type_φ), 10,) #sp_φ)
-    @timeit to "get elements" elements_w = getElements(nodes_w, entities_w["Ω"], eval(type_w), 10,) #sp_w)
+    @timeit to "get elements" elements_φ = getElements(nodes_φ, entities_φ["Ω"], eval(type_φ), 10,sp_φ)
+    @timeit to "get elements" elements_w = getElements(nodes_w, entities_w["Ω"], eval(type_w), 10,sp_w)
     @timeit to "get elements" elements_q = getElements(nodes, entities["Ω"], 10)
     # @timeit to "get elements" elements_m = getElements(nodes, entities["Ω"], 10)
     prescribe!(elements_φ, :E=>E, :ν=>ν, :h=>h, :φ₁=>φ₁, :φ₂=>φ₂)
