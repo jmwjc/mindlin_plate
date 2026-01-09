@@ -110,7 +110,7 @@ sp_φ = RegularGrid(xᵠ,yᵠ,zᵠ,n = 3,γ = 5)
 #s₃ = 1.5*s*ones(nᵠ)
 #push!(nodes_φ,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
 # ─── Shear ────────────────────────────────────────────────
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_high_un_tri3_$ndiv.msh")
 @timeit to "get nodes" nodes = get𝑿ᵢ()
 @timeit to "get entities" entities = getPhysicalGroups()
 
