@@ -5,7 +5,7 @@ import BenchmarkExample: PatchTest
 #     PatchTest.generateMsh("msh/patchtest_tri6_$n.msh", transfinite=n+1, order=2, quad=false)
 # end
 
-for n in 2:32
+for n in 15:15
     # PatchTest.generateMsh("msh/patchtest_quad4_$n.msh", transfinite=n+1, order=1, quad=true)
     PatchTest.generateMsh("msh/patchtest_quad8_$n.msh", transfinite=n+1, order=2, quad=true)
 end
