@@ -75,8 +75,8 @@ type_w = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_φ = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
-ndiv_φ = 18
-ndiv_w = 18
+ndiv_φ = 16
+ndiv_w = 16
 ndiv = ndiv_φ
 
 # 基于 circular.geo / circular_16.msh 的物理组命名，补齐边界别名：
@@ -111,11 +111,11 @@ end
 # 并在你确认同意后才会实际改动。
 
 XLSX.openxlsx("xls/circular_16_tri3_16.xlsx", mode="w") do xf
-    for ndiv = ndiv_w:32
+    for ndiv = ndiv_w:22
         # ndiv_w = ndiv
         row = ndiv
         # ─── Deflection W ─────────────────────────────────────────
-        @timeit to "open msh file" gmsh.open("msh/circular_$ndiv_w.msh")
+        @timeit to "open msh file" gmsh.open("msh/circular_tri3_$ndiv_w.msh")
         @timeit to "get nodes" nodes_w = get𝑿ᵢ()
         @timeit to "get entities" entities_w = getPhysicalGroups()
         ensure_circular_boundary_aliases!(entities_w)
@@ -132,7 +132,7 @@ XLSX.openxlsx("xls/circular_16_tri3_16.xlsx", mode="w") do xf
         zʷ = nodes_w.z
         sp_w = RegularGrid(xʷ, yʷ, zʷ, n=3, γ=5)
         # ─── Rotation Φ ───────────────────────────────────────────
-        @timeit to "open msh file" gmsh.open("msh/circular_$ndiv_φ.msh")
+        @timeit to "open msh file" gmsh.open("msh/circular_tri3_$ndiv_φ.msh")
         @timeit to "get nodes" nodes_φ = get𝑿ᵢ()
         @timeit to "get entities" entities_φ = getPhysicalGroups()
         ensure_circular_boundary_aliases!(entities_φ)
@@ -149,7 +149,7 @@ XLSX.openxlsx("xls/circular_16_tri3_16.xlsx", mode="w") do xf
         zᵠ = nodes_φ.z
         sp_φ = RegularGrid(xᵠ, yᵠ, zᵠ, n=3, γ=5)
         # ─── Shear ────────────────────────────────────────────────
-        @timeit to "open msh file" gmsh.open("msh/circular_$ndiv.msh")
+        @timeit to "open msh file" gmsh.open("msh/circular_tri3_$ndiv.msh")
         @timeit to "get nodes" nodes = get𝑿ᵢ()
         @timeit to "get entities" entities = getPhysicalGroups()
         ensure_circular_boundary_aliases!(entities)
@@ -211,26 +211,45 @@ XLSX.openxlsx("xls/circular_16_tri3_16.xlsx", mode="w") do xf
             @timeit to "get elements" elements_φ_Γ = getElements(nodes_φ, entities_φ["Γ"], eval(type_φ), integrationOrder, sp_φ, normal=true)
             @timeit to "calculate shape functions" set𝝭!(elements_φ_Γ)
 
-            # 圆板边界由 Γᵇ、Γᵉ、Γˡ 三段组成。为避免 getPiecewiseBoundaryElements
-            # 内部对 ne/nb(=3) 的整除假设在合并后失效，这里改为分段生成再合并。
-            @timeit to "get elements" begin
-                elements_m_Γ = ApproxOperator.AbstractElement[]
-                append!(elements_m_Γ, getPiecewiseBoundaryElements(entities["Γᵇ"], entities["Ω"], eval(type_M), integrationOrder))
-                append!(elements_m_Γ, getPiecewiseBoundaryElements(entities["Γᵉ"], entities["Ω"], eval(type_M), integrationOrder))
-                append!(elements_m_Γ, getPiecewiseBoundaryElements(entities["Γˡ"], entities["Ω"], eval(type_M), integrationOrder))
-            end
-            @timeit to "calculate shape functions" set𝝭!(elements_m_Γ)
+            # =====================================================================
+            # 方案A（先跑“没有纯Γ”的版本）：
+            # - 不构造 piecewise 边界 elements_m_Γ
+            # - 不组装边界项 ∫MφdΓ
+            # 保留代码（注释）以便后续恢复。
+            # =====================================================================
+
+            # # 圆板边界由 Γᵇ、Γᵉ、Γˡ 三段组成。为避免 getPiecewiseBoundaryElements
+            # # 内部对 ne/nb(=3) 的整除假设在合并后失效，这里改为分段生成再合并。
+            # @timeit to "get elements" begin
+            #     elements_m_Γ = ApproxOperator.AbstractElement[]
+            #     append!(elements_m_Γ, getPiecewiseBoundaryElements(entities["Γᵇ"], entities["Ω"], eval(type_M), integrationOrder))
+            #     append!(elements_m_Γ, getPiecewiseBoundaryElements(entities["Γᵉ"], entities["Ω"], eval(type_M), integrationOrder))
+            #     append!(elements_m_Γ, getPiecewiseBoundaryElements(entities["Γˡ"], entities["Ω"], eval(type_M), integrationOrder))
+            # end
+            # @timeit to "calculate shape functions" set𝝭!(elements_m_Γ)
 
             𝑎ᵐᵐ = ∫MMdΩ => elements_m
             𝑎ᵐᵠ = [
                 ∫∇MφdΩ => (elements_m, elements_φ),
-                ∫MφdΓ => (elements_m_Γ, elements_φ_Γ),
+                # ∫MφdΓ => (elements_m_Γ, elements_φ_Γ),
             ]
             𝑎ˢᵠ = ∫QφdΩ => (elements_q, elements_φ)
             @timeit to "assemble" 𝑎ᵐᵐ(kᵐᵐ)
             @timeit to "assemble" 𝑎ᵐᵠ(kᵐᵠ)
             @timeit to "assemble" 𝑎ˢᵠ(kˢᵠ)
         end
+
+        # =====================================================================
+        # 方案A：禁用圆弧转角罚项（依赖 elements_m_Γ）
+        # =====================================================================
+        # @timeit to "calculate ∫MφdΓ" begin
+        #     elements_m_Γ_circ = getElements(entities["Γ_circ"], entities["Γ"], elements_m_Γ)
+        #     elements_φ_Γ_circ = getElements(nodes_φ, entities_φ["Γ_circ"], eval(type_φ), integrationOrder, sp_φ, normal=true)
+        #     prescribe!(elements_φ_Γ_circ, :α => 1e8 * E, :g₁ => φ₁, :g₂ => φ₂, :n₁₁ => 1.0, :n₁₂ => 0.0, :n₂₂ => 1.0)
+        #     @timeit to "calculate shape functions" set𝝭!(elements_φ_Γ_circ)
+        #     𝑎 = ∫MφdΓ => (elements_m_Γ_circ, elements_φ_Γ_circ)
+        #     @timeit to "assemble" 𝑎(kᵐᵠ, fᵐ)
+        # end
 
         @timeit to "calculate ∫QwdΓ" begin
             elements_q_Γ_circ = getElements(nodes, entities["Γ_circ"], integrationOrder, normal=true)
@@ -240,15 +259,6 @@ XLSX.openxlsx("xls/circular_16_tri3_16.xlsx", mode="w") do xf
             @timeit to "calculate shape functions" set𝝭!(elements_w_Γ_circ)
             𝑎 = ∫QwdΓ => (elements_q_Γ_circ, elements_w_Γ_circ)
             @timeit to "assemble" 𝑎(kˢʷ, fˢ)
-        end
-
-        @timeit to "calculate ∫MφdΓ" begin
-            elements_m_Γ_circ = getElements(entities["Γ_circ"], entities["Γ"], elements_m_Γ)
-            elements_φ_Γ_circ = getElements(nodes_φ, entities_φ["Γ_circ"], eval(type_φ), integrationOrder, sp_φ, normal=true)
-            prescribe!(elements_φ_Γ_circ, :α => 1e8 * E, :g₁ => φ₁, :g₂ => φ₂, :n₁₁ => 1.0, :n₁₂ => 0.0, :n₂₂ => 1.0)
-            @timeit to "calculate shape functions" set𝝭!(elements_φ_Γ_circ)
-            𝑎 = ∫MφdΓ => (elements_m_Γ_circ, elements_φ_Γ_circ)
-            @timeit to "assemble" 𝑎(kᵐᵠ, fᵐ)
         end
 
         @timeit to "solve" d = [kᵠᵠ kᵠʷ kˢᵠ' kᵐᵠ'; kᵠʷ' kʷʷ kˢʷ' kᵐʷ'; kˢᵠ kˢʷ kˢˢ kˢᵐ; kᵐᵠ kᵐʷ kˢᵐ' kᵐᵐ] \ [fᵠ; fʷ; fˢ; fᵐ]
