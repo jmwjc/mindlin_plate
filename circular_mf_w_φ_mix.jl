@@ -76,7 +76,7 @@ type_φ = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
 ndiv_φ = 16
-ndiv_w = 16
+ndiv_w = 17
 ndiv = ndiv_φ
 
 # 基于 circular.geo / circular_16.msh 的物理组命名，补齐边界别名：
@@ -110,7 +110,7 @@ end
 # 1) 发现的问题/错误点；2) 产生原因；3) 建议修改方案与影响；
 # 并在你确认同意后才会实际改动。
 
-XLSX.openxlsx("xls/circular_16_tri3_16.xlsx", mode="w") do xf
+XLSX.openxlsx("xls/circular_16_tri3_17.xlsx", mode="w") do xf
     for ndiv = ndiv_w:22
         # ndiv_w = ndiv
         row = ndiv
@@ -305,17 +305,17 @@ XLSX.openxlsx("xls/circular_16_tri3_16.xlsx", mode="w") do xf
         sheet["I1"] = "L₂w"
         sheet["J1"] = "L₂φ"
         sheet["K1"] = "L₂Q"
-        sheet["A2"] = "$type_w"
-        sheet["B2"] = nʷ
-        sheet["C2"] = "$type_φ"
-        sheet["D2"] = nᵠ
-        sheet["E2"] = "$type_Q"
-        sheet["F2"] = nˢ
-        sheet["G2"] = "$type_M"
-        sheet["H2"] = nᵐ
-        sheet["I2"] = log10(L₂_w)
-        sheet["J2"] = log10(L₂_φ)
-        sheet["K2"] = log10(L₂_Q)
+        sheet["A$row"] = "$type_w"
+        sheet["B$row"] = nʷ
+        sheet["C$row"] = "$type_φ"
+        sheet["D$row"] = nᵠ
+        sheet["E$row"] = "$type_Q"
+        sheet["F$row"] = nˢ
+        sheet["G$row"] = "$type_M"
+        sheet["H$row"] = nᵐ
+        sheet["I$row"] = log10(L₂_w)
+        sheet["J$row"] = log10(L₂_φ)
+        sheet["K$row"] = log10(L₂_Q)
     end
 end
 gmsh.finalize()
