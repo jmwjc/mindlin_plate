@@ -1,6 +1,5 @@
-
 a = 5.0;
-n = 12.5;
+n = 2;
 
 
 Point(1) = {0.0, 0.0, 0.0};
@@ -34,6 +33,8 @@ Transfinite Surface{3} ;
 Physical Curve("Γᵇ") = {1,2};
 Physical Curve("Γᵉ") = {3,4};
 Physical Curve("Γˡ") = {5,6};
+// 新增：整圈边界（合并所有边界曲线），用于程序中 entities["Γ"]
+Physical Curve("Γ") = {1,2,3,4,5,6};
 Physical Surface("Ω") = {1,2,3};
 Physical Point("𝐴") = {1};
 
