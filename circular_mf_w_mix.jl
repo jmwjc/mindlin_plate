@@ -44,7 +44,7 @@ type_w = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_φ = :tri3
 type_q = :(PiecewisePolynomial{:Quadratic2D})
 ndiv = 9
-ndiv_w = 9
+# ndiv_w = 9
 XLSX.openxlsx("xls/circular_mf_w_mix.xlsx", mode="w") do xf
     for ndiv_w = 9:16
         row = ndiv_w
@@ -55,12 +55,15 @@ XLSX.openxlsx("xls/circular_mf_w_mix.xlsx", mode="w") do xf
         yʷ = nodes_w.y
         zʷ = nodes_w.z
         nʷ = length(nodes_w)
-        sp = RegularGrid(xʷ, yʷ, zʷ, n=3, γ=5)
+        # RK 邻域：圆板扇形在圆弧/角点附近更易邻域退化，导致 moment matrix 数值非 SPD。
+        # 不修改 ApproxOperator 的前提下，只能在脚本侧提高邻域稳定性。
+        sp = RegularGrid(xʷ, yʷ, zʷ, n=1, γ=2)
         s = 1 / ndiv_w
-        s₁ = 2 * s * ones(nʷ)
-        s₂ = 2 * s * ones(nʷ)
-        s₃ = 2 * s * ones(nʷ)
+        s₁ = 2.5 * s * ones(nʷ)
+        s₂ = 2.5 * s * ones(nʷ)
+        s₃ = 2.5 * s * ones(nʷ)
         push!(nodes_w, :s₁ => s₁, :s₂ => s₂, :s₃ => s₃)
+
 
         @timeit to "open msh file" gmsh.open("msh/circular_tri3_$ndiv.msh")
         @timeit to "get nodes" nodes_φ = get𝑿ᵢ()
@@ -68,7 +71,7 @@ XLSX.openxlsx("xls/circular_mf_w_mix.xlsx", mode="w") do xf
 
         # 关键物理组检查
         for key in ("Ω", "Γ", "Γᵇ", "Γᵉ", "Γˡ", "𝐴")
-            haskey(entities, key) || error("Mesh physical group '$key' not found in msh/circular_tri3_16.msh")
+            haskey(entities, key) || error("Mesh physical group '$key' not found in msh/circular_tri3_$ndiv_w.msh")
         end
 
         @timeit to "calculate main elements" begin
@@ -130,7 +133,7 @@ XLSX.openxlsx("xls/circular_mf_w_mix.xlsx", mode="w") do xf
         # 边界条件（论文）：
         # - 外圆弧 Γᵉ：固接 w=0, φ₁=0, φ₂=0
         # - 对称边界：on CB: βy=0；on CA: βx=0
-        #   结合本 msh：Γᵇ(y=0) -> 约束 φ₂=0；Γˡ(x=0) -> 约束 φ₁=0
+        #   结合本 msh：Γˡ(x=0) -> 约束 φ₂=0；Γᵇ(y=0) -> 约束 φ₁=0
         # ------------------------------------------------------------
         α = 1e8 * E
 
@@ -150,17 +153,19 @@ XLSX.openxlsx("xls/circular_mf_w_mix.xlsx", mode="w") do xf
             𝑎φ(kᵠᵠ, fᵠ)
         end
 
-        @timeit to "symmetry on Γᵇ (φ₂=0)" begin
+        @timeit to "symmetry on Γᵇ (φ₁=0)" begin
             elements_φ_Γb = getElements(nodes_φ, entities["Γᵇ"], integrationOrder, normal=true)
-            prescribe!(elements_φ_Γb, :α => α, :g => w_bc, :g₁ => w_bc, :g₂ => φ2_bc, :n₁₁ => 0.0, :n₁₂ => 0.0, :n₂₂ => 1.0)
+            # Γᵇ: y=0，对称边，约束 φ₁
+            prescribe!(elements_φ_Γb, :α => α, :g => w_bc, :g₁ => φ1_bc, :g₂ => w_bc, :n₁₁ => 1.0, :n₁₂ => 0.0, :n₂₂ => 0.0)
             set𝝭!(elements_φ_Γb)
             𝑎φb = ∫αφφdΓ => elements_φ_Γb
             𝑎φb(kᵠᵠ, fᵠ)
         end
 
-        @timeit to "symmetry on Γˡ (φ₁=0)" begin
+        @timeit to "symmetry on Γˡ (φ₂=0)" begin
             elements_φ_Γl = getElements(nodes_φ, entities["Γˡ"], integrationOrder, normal=true)
-            prescribe!(elements_φ_Γl, :α => α, :g => w_bc, :g₁ => φ1_bc, :g₂ => w_bc, :n₁₁ => 1.0, :n₁₂ => 0.0, :n₂₂ => 0.0)
+            # Γˡ: x=0，对称边，约束 φ₂
+            prescribe!(elements_φ_Γl, :α => α, :g => w_bc, :g₁ => w_bc, :g₂ => φ2_bc, :n₁₁ => 0.0, :n₁₂ => 0.0, :n₂₂ => 1.0)
             set𝝭!(elements_φ_Γl)
             𝑎φl = ∫αφφdΓ => elements_φ_Γl
             𝑎φl(kᵠᵠ, fᵠ)
