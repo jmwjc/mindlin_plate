@@ -59,9 +59,9 @@ XLSX.openxlsx("xls/circular_mf_w_mix.xlsx", mode="w") do xf
         # 不修改 ApproxOperator 的前提下，只能在脚本侧提高邻域稳定性。
         sp = RegularGrid(xʷ, yʷ, zʷ, n=1, γ=2)
         s = 1 / ndiv_w
-        s₁ = 2 * s * ones(nʷ)
-        s₂ = 2 * s * ones(nʷ)
-        s₃ = 2 * s * ones(nʷ)
+        s₁ = 2.5 * s * ones(nʷ)
+        s₂ = 2.5 * s * ones(nʷ)
+        s₃ = 2.5 * s * ones(nʷ)
         push!(nodes_w, :s₁ => s₁, :s₂ => s₂, :s₃ => s₃)
 
 
