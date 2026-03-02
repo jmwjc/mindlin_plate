@@ -1,109 +1,183 @@
 using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements, getPiecewiseElements, getPiecewiseBoundaryElements
-import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫Q∇wdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ
+import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, L₂, L₂φ, L₂Q
 
-using LinearAlgebra: dot
 using TimerOutputs, XLSX
 import Gmsh: gmsh
 
-# ------------------------------------------------------------
-# 圆板算例（Katili 1993）
-# 工况：1/4 圆板，R=5；中厚板 h=1（R/h=5）；外圆弧固接；均布载荷 fz=1
-# msh: msh/circular_tri3_16.msh（必须包含 Ω, Γ, Γᵇ, Γᵉ, Γˡ, 𝐴）
-# ------------------------------------------------------------
-
-E = 10.92
-ν = 0.3
-h = 1.0
-R = 5.0
-kappa = 5 / 6
-Dᵇ = E * h^3 / 12 / (1 - ν^2)
-Dˢ = kappa * E * h / (2 * (1 + ν))
-
-# 载荷（均布）
-F = 1.0
-q(x, y, z) = F
-
-# 论文给出的中心位移参考值（Table VIa: clamped, R/h=5）
-w_center_exact = 11.551
-M_center_exact = 2.03
-U_total_exact = 81.45
-
-# Dirichlet 目标函数
-w_bc(x, y, z) = 0.0
-φ1_bc(x, y, z) = 0.0
-φ2_bc(x, y, z) = 0.0
+# ─────────────────────────────────────────────────────────────
+# 圆形板（四分之一圆）— 固支(clamped) — 中厚板（R/h=5）
+# 参考：/home/jason/vscode/Group (自用版)/Documents/圆板精確解.md
+# 物理组来自：mindlin_plate/msh/circular.geo
+#   Ω: 面域
+#   Γ: 全边界（合并）
+#   Γᵇ: bottom 径向边（x 轴）
+#   Γˡ: left   径向边（y 轴）
+#   Γᵉ: 外圆弧边界（r=R）
+#      𝐴: 圆心点
+# ─────────────────────────────────────────────────────────────
 
 const to = TimerOutput()
 
-gmsh.initialize()
+# 几何/材料/载荷
+R = 5.0
+E = 10.92
+ν = 0.3
+k = 5 / 6
+h = 1.0            # 中厚板：R/h = 5
+f_z = 1.0
+
+Dᵇ = E * h^3 / 12 / (1 - ν^2)
+Dˢ = k * E * h / (2 * (1 + ν))
+
+# 无量纲半径
+ζ(x, y) = (x^2 + y^2)^0.5 / R
+
+# ─────────────────────────────────────────────────────────────
+# clamped 精确解（文档给的是轴对称 w(r)；这里把 r->sqrt(x^2+y^2)）
+# 注意：该精确解对应“整圆”均布载荷；四分之一圆 + 对称边界应与之相容。
+# w_exact 用于误差 L₂；φ_exact 用于 L₂φ；Q_exact 用于 L₂Q。
+#
+# 对于轴对称：φ 为转角向量（φx, φy）= (dw/dr) * (x/r, y/r)
+# Q 为横向剪力向量 = (T_r * x/r, T_r * y/r)
+# ─────────────────────────────────────────────────────────────
+
+# w(r)
+function w_exact(x, y, z)
+    r = (x^2 + y^2)^0.5
+    ζv = r / R
+    return (f_z * R^4) / (64 * Dᵇ) * (1 - ζv^2) * ((1 - ζv^2) + 8 * (h / R)^2 / (3 * k * (1 - ν)))
+end
+
+# dw/dr
+function dwdr_exact(r)
+    # w = C*(1-ζ^2)*((1-ζ^2)+A)
+    # with ζ=r/R, C=fz*R^4/(64Db), A=8*(h/R)^2/(3k(1-ν))
+    C = (f_z * R^4) / (64 * Dᵇ)
+    A = 8 * (h / R)^2 / (3 * k * (1 - ν))
+    ζv = r / R
+    # Let u = (1-ζ^2); w = C*u*(u + A) = C*(u^2 + A*u)
+    # dw/dζ = C*(2*u*du/dζ + A*du/dζ) = C*(2*u + A)*du/dζ
+    # du/dζ = -2ζ
+    # dw/dr = (dw/dζ)*(dζ/dr) = C*(2*u + A)*(-2ζ)*(1/R)
+    u = 1 - ζv^2
+    return C * (2 * u + A) * (-2 * ζv) / R
+end
+
+function φ_exact_components(x, y)
+    r = (x^2 + y^2)^0.5
+    if r == 0.0
+        return 0.0, 0.0
+    end
+    t = dwdr_exact(r)
+    return t * (x / r), t * (y / r)
+end
+
+φ₁_exact(x, y, z) = (φ_exact_components(x, y))[1]
+φ₂_exact(x, y, z) = (φ_exact_components(x, y))[2]
+
+# T_r = -f_z*r/2
+function Q_exact_components(x, y)
+    r = (x^2 + y^2)^0.5
+    if r == 0.0
+        return 0.0, 0.0
+    end
+    Tr = -f_z * r / 2
+    return Tr * (x / r), Tr * (y / r)
+end
+
+Q₁_exact(x, y, z) = (Q_exact_components(x, y))[1]
+Q₂_exact(x, y, z) = (Q_exact_components(x, y))[2]
+
+# 本圆板算例：采用体载形式 q=f_z（与模板的 patch test 从解析反推不同）
+q_load(x, y, z) = f_z
+
+# 固支边界值：圆周 r=R 上 w=0, φ=0
+w_bc(x, y, z) = 0.0
+φ₁_bc(x, y, z) = 0.0
+φ₂_bc(x, y, z) = 0.0
+
+# ─────────────────────────────────────────────────────────────
+# 离散设置（保持模板风格）
+# ─────────────────────────────────────────────────────────────
 
 integrationOrder = 4
+integrationOrder_err = 10
 
 type_w = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_φ = :tri3
 type_q = :(PiecewisePolynomial{:Quadratic2D})
-ndiv = 9
-# ndiv_w = 9
-XLSX.openxlsx("xls/circular_mf_w_mix.xlsx", mode="w") do xf
-    for ndiv_w = 9:16
+
+# φ/Q 使用固定网格；w 用可变网格（保持与你的模板一致）
+ndiv_φ = 16
+
+gmsh.initialize()
+
+XLSX.openxlsx("xls/circular_clamped_mid.xlsx", mode="w") do xf
+    sheet = xf[1]
+    XLSX.rename!(sheet, "circular")
+    sheet["A1"] = "type w"
+    sheet["B1"] = "nʷ"
+    sheet["C1"] = "type φ"
+    sheet["D1"] = "nᵠ"
+    sheet["E1"] = "type Q"
+    sheet["F1"] = "nᵛ"
+    sheet["G1"] = "L₂w"
+    sheet["H1"] = "L₂φ"
+    sheet["I1"] = "L₂Q"
+
+    for ndiv_w in 2:16
         row = ndiv_w
-        # ──────────────────────────────────────────────────────────
-        @timeit to "open msh file" gmsh.open("msh/circular_tri3_$ndiv_w.msh")
-        @timeit to "get nodes" nodes_w = get𝑿ᵢ()
+
+        # 1) w 网格（RK）
+        @timeit to "open w msh" gmsh.open("msh/circular_tri3_$ndiv_w.msh")
+        @timeit to "get nodes_w" nodes_w = get𝑿ᵢ()
         xʷ = nodes_w.x
         yʷ = nodes_w.y
         zʷ = nodes_w.z
         nʷ = length(nodes_w)
-        # RK 邻域：圆板扇形在圆弧/角点附近更易邻域退化，导致 moment matrix 数值非 SPD。
-        # 不修改 ApproxOperator 的前提下，只能在脚本侧提高邻域稳定性。
-        sp = RegularGrid(xʷ, yʷ, zʷ, n=1, γ=2)
-        s = 1 / ndiv_w
-        s₁ = 2.5 * s * ones(nʷ)
-        s₂ = 2.5 * s * ones(nʷ)
-        s₃ = 2.5 * s * ones(nʷ)
+
+        sp = RegularGrid(xʷ, yʷ, zʷ, n=3, γ=5)
+        s = (R) / (ndiv_w) # 以半径尺度做一个相对一致的支撑域
+        s₁ = 1.5 * s * ones(nʷ)
+        s₂ = 1.5 * s * ones(nʷ)
+        s₃ = 1.5 * s * ones(nʷ)
         push!(nodes_w, :s₁ => s₁, :s₂ => s₂, :s₃ => s₃)
 
-
-        @timeit to "open msh file" gmsh.open("msh/circular_tri3_$ndiv.msh")
-        @timeit to "get nodes" nodes_φ = get𝑿ᵢ()
+        # 2) φ/Q 网格（固定）
+        @timeit to "open φ msh" gmsh.open("msh/circular_tri3_$ndiv_φ.msh")
+        @timeit to "get nodes_φ" nodes_φ = get𝑿ᵢ()
         @timeit to "get entities" entities = getPhysicalGroups()
 
-        # 关键物理组检查
-        for key in ("Ω", "Γ", "Γᵇ", "Γᵉ", "Γˡ", "𝐴")
-            haskey(entities, key) || error("Mesh physical group '$key' not found in msh/circular_tri3_$ndiv_w.msh")
+        # 3) 主域 elements
+        @timeit to "calculate main elements" begin
+            elements_φ = getElements(nodes_φ, entities["Ω"], integrationOrder)
+            elements_w = getElements(nodes_w, entities["Ω"], eval(type_w), integrationOrder, sp)
+            elements_q = getPiecewiseElements(entities["Ω"], eval(type_q), integrationOrder)
         end
 
-        @timeit to "calculate main elements" begin
-            @timeit to "get elements" elements_φ = getElements(nodes_φ, entities["Ω"], integrationOrder)
-            @timeit to "get elements" elements_w = getElements(nodes_w, entities["Ω"], eval(type_w), integrationOrder, sp)
-            @timeit to "get elements" elements_q = getPiecewiseElements(entities["Ω"], eval(type_q), integrationOrder)
-        end
         nₑ = length(elements_φ)
         nᵠ = length(nodes_φ)
         nᵛ = nₑ * ApproxOperator.get𝑛𝑝(elements_q[1])
+
         kʷʷ = zeros(nʷ, nʷ)
         kᵛʷ = zeros(2 * nᵛ, nʷ)
         kᵠʷ = zeros(2 * nᵠ, nʷ)
         fʷ = zeros(nʷ)
+
         kᵠᵠ = zeros(2 * nᵠ, 2 * nᵠ)
         kᵛᵛ = zeros(2 * nᵛ, 2 * nᵛ)
         kᵛᵠ = zeros(2 * nᵛ, 2 * nᵠ)
         fᵠ = zeros(2 * nᵠ)
         fᵛ = zeros(2 * nᵛ)
 
-        # ------------------------------------------------------------
-        # 组装：域积分 + 混合边界耦合（保持模板结构）
-        # ------------------------------------------------------------
-        @timeit to "calculate domain" begin
+        @timeit to "calculate ∫κκdΩ" begin
             @timeit to "get elements" elements_w_Γ = getElements(nodes_w, entities["Γ"], eval(type_w), integrationOrder, sp, normal=true)
             @timeit to "get elements" elements_q_Γ = getPiecewiseBoundaryElements(entities["Γ"], entities["Ω"], eval(type_q), integrationOrder)
 
             prescribe!(elements_φ, :E => E, :ν => ν, :h => h)
             prescribe!(elements_q, :E => E, :ν => ν, :h => h)
-            prescribe!(elements_w, :E => E, :ν => ν, :h => h, :q => q)
-            # 圆板算例无分布弯矩载荷，显式设为 0，避免 ∫φmdΩ 读取不到 m₁/m₂
-            prescribe!(elements_φ, :m₁ => (x, y, z) -> 0.0, :m₂ => (x, y, z) -> 0.0)
+            prescribe!(elements_w, :E => E, :ν => ν, :h => h, :q => q_load)
 
             @timeit to "calculate shape functions" set∇𝝭!(elements_φ)
             @timeit to "calculate shape functions" set∇𝝭!(elements_q)
@@ -118,64 +192,50 @@ XLSX.openxlsx("xls/circular_mf_w_mix.xlsx", mode="w") do xf
                 ∫∇QwdΩ => (elements_q, elements_w),
                 ∫QwdΓ => (elements_q_Γ, elements_w_Γ),
             ]
-            𝑓ᵠ_op = ∫φmdΩ => elements_φ
-            𝑓ʷ_op = ∫wqdΩ => elements_w
+            𝑓ʷ_ = ∫wqdΩ => elements_w
 
             @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
             @timeit to "assemble" 𝑎ᵛᵛ(kᵛᵛ)
             @timeit to "assemble" 𝑎ᵛᵠ(kᵛᵠ)
             @timeit to "assemble" 𝑎ᵛʷ(kᵛʷ)
-            @timeit to "assemble" 𝑓ᵠ_op(fᵠ)
-            @timeit to "assemble" 𝑓ʷ_op(fʷ)
+            @timeit to "assemble" 𝑓ʷ_(fʷ)
         end
 
-        # ------------------------------------------------------------
-        # 边界条件（论文）：
-        # - 外圆弧 Γᵉ：固接 w=0, φ₁=0, φ₂=0
-        # - 对称边界：on CB: βy=0；on CA: βx=0
-        #   结合本 msh：Γˡ(x=0) -> 约束 φ₂=0；Γᵇ(y=0) -> 约束 φ₁=0
-        # ------------------------------------------------------------
-        α = 1e8 * E
-
-        @timeit to "penalty on Γᵉ (w)" begin
-            elements_w_Γe = getElements(nodes_w, entities["Γᵉ"], eval(type_w), integrationOrder, sp, normal=true)
-            prescribe!(elements_w_Γe, :α => α, :g => w_bc)
-            set𝝭!(elements_w_Γe)
-            𝑎w = ∫αwwdΓ => elements_w_Γe
-            𝑎w(kʷʷ, fʷ)
+        @timeit to "calculate ∫αwwdΓ" begin
+            @timeit to "get elements" elements_w_bc = getElements(nodes_w, entities["Γ"], eval(type_w), integrationOrder, sp, normal=true)
+            prescribe!(elements_w_bc, :α => 1e8 * E, :g => w_bc)
+            @timeit to "calculate shape functions" set𝝭!(elements_w_bc)
+            𝑎ʷ = ∫αwwdΓ => elements_w_bc
+            @timeit to "assemble" 𝑎ʷ(kʷʷ, fʷ)
         end
 
-        @timeit to "penalty on Γᵉ (φ)" begin
-            elements_φ_Γe = getElements(nodes_φ, entities["Γᵉ"], integrationOrder, normal=true)
-            prescribe!(elements_φ_Γe, :α => α, :g => w_bc, :g₁ => φ1_bc, :g₂ => φ2_bc, :n₁₁ => 1.0, :n₁₂ => 0.0, :n₂₂ => 1.0)
-            set𝝭!(elements_φ_Γe)
-            𝑎φ = ∫αφφdΓ => elements_φ_Γe
-            𝑎φ(kᵠᵠ, fᵠ)
+        @timeit to "calculate ∫αφφdΓ" begin
+            @timeit to "get elements" elements_φ_bc = getElements(nodes_φ, entities["Γ"], integrationOrder, normal=true)
+            prescribe!(elements_φ_bc, :α => 1e8 * E, :g₁ => φ₁_bc, :g₂ => φ₂_bc, :n₁₁ => 1.0, :n₁₂ => 0.0, :n₂₂ => 1.0)
+            @timeit to "calculate shape functions" set𝝭!(elements_φ_bc)
+            𝑎ᵠ = ∫αφφdΓ => elements_φ_bc
+            @timeit to "assemble" 𝑎ᵠ(kᵠᵠ, fᵠ)
         end
 
-        @timeit to "symmetry on Γᵇ (φ₁=0)" begin
-            elements_φ_Γb = getElements(nodes_φ, entities["Γᵇ"], integrationOrder, normal=true)
-            # Γᵇ: y=0，对称边，约束 φ₁
-            prescribe!(elements_φ_Γb, :α => α, :g => w_bc, :g₁ => φ1_bc, :g₂ => w_bc, :n₁₁ => 1.0, :n₁₂ => 0.0, :n₂₂ => 0.0)
-            set𝝭!(elements_φ_Γb)
-            𝑎φb = ∫αφφdΓ => elements_φ_Γb
-            𝑎φb(kᵠᵠ, fᵠ)
+        @timeit to "calculate ∫QwdΓ" begin
+            @timeit to "get elements" elements_q_Γ = getPiecewiseBoundaryElements(entities["Γ"], entities["Ω"], eval(type_q), integrationOrder)
+            @timeit to "get elements" elements_q_bc = getElements(entities["Γ"], entities["Γ"], elements_q_Γ)
+            @timeit to "get elements" elements_w_bc = getElements(nodes_w, entities["Γ"], eval(type_w), integrationOrder, sp, normal=true)
+
+            prescribe!(elements_w_bc, :g => w_bc)
+            @timeit to "calculate shape functions" set𝝭!(elements_q_Γ)
+            @timeit to "calculate shape functions" set𝝭!(elements_w_bc)
+
+            𝑎ᵛ = ∫QwdΓ => (elements_q_bc, elements_w_bc)
+            @timeit to "assemble" 𝑎ᵛ(kᵛʷ, fᵛ)
         end
 
-        @timeit to "symmetry on Γˡ (φ₂=0)" begin
-            elements_φ_Γl = getElements(nodes_φ, entities["Γˡ"], integrationOrder, normal=true)
-            # Γˡ: x=0，对称边，约束 φ₂
-            prescribe!(elements_φ_Γl, :α => α, :g => w_bc, :g₁ => w_bc, :g₂ => φ2_bc, :n₁₁ => 0.0, :n₁₂ => 0.0, :n₂₂ => 1.0)
-            set𝝭!(elements_φ_Γl)
-            𝑎φl = ∫αφφdΓ => elements_φ_Γl
-            𝑎φl(kᵠᵠ, fᵠ)
-        end
+        # 6) 求解
+        @timeit to "solve" d = [kᵠᵠ kᵠʷ kᵛᵠ';
+            kᵠʷ' kʷʷ kᵛʷ';
+            kᵛᵠ kᵛʷ kᵛᵛ] \ [fᵠ; fʷ; fᵛ]
 
-        # ------------------------------------------------------------
-        # 求解
-        # ------------------------------------------------------------
-        @timeit to "solve" d = [kᵠᵠ kᵠʷ kᵛᵠ'; kᵠʷ' kʷʷ kᵛʷ'; kᵛᵠ kᵛʷ kᵛᵛ] \ [fᵠ; fʷ; fᵛ]
-
+        # 7) 回填（模板同款）
         nodes_q = 𝑿ᵢ[]
         for elm in elements_q
             for node in elm.𝓒
@@ -187,70 +247,55 @@ XLSX.openxlsx("xls/circular_mf_w_mix.xlsx", mode="w") do xf
         push!(nodes_w, :d => d[2*nᵠ+1:2*nᵠ+nʷ])
         push!(nodes_q, :q₁ => d[2*nᵠ+nʷ+1:2:end], :q₂ => d[2*nᵠ+nʷ+2:2:end])
 
-        # ------------------------------------------------------------
-        # 收敛指标（Katili 1993, clamped）
-        # - 中心位移: w_center
-        # - 中心弯矩: M_center（取中心节点对应的板弯矩）
-        # - 总能量: U_total = 0.5 * f^T d（线性系统的外力做功）
-        # ------------------------------------------------------------
-        I_center = 1
-        w_center = nodes_w.d[I_center]
-        err_w = abs(w_center - w_center_exact) / abs(w_center_exact)
+        # 8) 误差（用精确解）
+        @timeit to "calculate error" begin
+            @timeit to "get elements" elements_φ_err = getElements(nodes_φ, entities["Ω"], integrationOrder_err)
+            @timeit to "get elements" elements_w_err = getElements(nodes_w, entities["Ω"], eval(type_w), integrationOrder_err, sp)
+            @timeit to "get elements" elements_q_err = getPiecewiseElements(entities["Ω"], eval(type_q), integrationOrder_err)
 
-        # 由中心节点近似中心弯矩（如果你有更精确的中心节点定位，可替换 I_center）
-        # 这里使用各向同性板的相关量从元素场恢复通常需要额外后处理；
-        # 优先尝试从 nodes_φ 上的转角二阶导数恢复弯矩并不直接可用。
-        # 因此此处先留默认值 NaN，避免误导；你如果已在 ApproxOperator 中有现成算子可直接替换。
-        M_center = NaN
-        err_M = (isfinite(M_center) && M_center_exact != 0) ? abs(M_center - M_center_exact) / abs(M_center_exact) : NaN
+            prescribe!(elements_φ_err, :E => E, :ν => ν, :h => h, :φ₁ => φ₁_exact, :φ₂ => φ₂_exact)
+            prescribe!(elements_w_err, :E => E, :ν => ν, :h => h, :u => w_exact)
+            prescribe!(elements_q_err, :E => E, :ν => ν, :h => h, :Q₁ => Q₁_exact, :Q₂ => Q₂_exact)
 
-        # 总能量（外力做功）
-        f_all = [fᵠ; fʷ; fᵛ]
-        U_total = 0.5 * dot(f_all, d)
-        err_U = abs(U_total - U_total_exact) / abs(U_total_exact)
+            @timeit to "calculate shape functions" set𝝭!(elements_φ_err)
+            @timeit to "calculate shape functions" set𝝭!(elements_w_err)
+            @timeit to "calculate shape functions" set𝝭!(elements_q_err)
 
-        println(to)
-        println("center w: ", w_center, ", exact: ", w_center_exact, ", rel err: ", err_w)
-        println("total energy: ", U_total, ", exact: ", U_total_exact, ", rel err: ", err_U)
-        println("center moment M (placeholder): ", M_center, ", exact: ", M_center_exact)
+            L₂_w = L₂(elements_w_err)
+            L₂_φ = L₂φ(elements_φ_err)
+            L₂_Q = L₂Q(elements_q_err)
+        end
+        
+println(to)
 
-        # ──────────────────────────────────────────────────────────
-        sheet = xf[1]
-        XLSX.rename!(sheet, "circular")
-        sheet["A1"] = "type w"
-        sheet["B1"] = "nʷ"
-        sheet["C1"] = "type φ"
-        sheet["D1"] = "nᵠ"
-        sheet["E1"] = "type Q"
-        sheet["F1"] = "nᵛ"
-        sheet["G1"] = "rel_err_w_center"
-        sheet["H1"] = "rel_err_M_center"
-        sheet["I1"] = "rel_err_U_total"
-
-        # sheet["J1"] = "w_center"
-        # sheet["K1"] = "w_exact"
-        # sheet["L1"] = "M_center"
-        # sheet["M1"] = "M_exact"
-        # sheet["N1"] = "U_total"
-        # sheet["O1"] = "U_exact"
-
-        sheet["A$row"] = "$type_w"
-        sheet["B$row"] = nʷ
-        sheet["C$row"] = "$type_φ"
-        sheet["D$row"] = nᵠ
-        sheet["E$row"] = "$type_q"
-        sheet["F$row"] = nᵛ
-        sheet["G$row"] = log10(err_w)
-        sheet["H$row"] = (isfinite(err_M) ? log10(err_M) : "")
-        sheet["I$row"] = log10(err_U)
-
-        # sheet["J$row"] = w_center
-        # sheet["K$row"] = w_center_exact
-        # sheet["L$row"] = M_center
-        # sheet["M$row"] = M_center_exact
-        # sheet["N$row"] = U_total
-        # sheet["O$row"] = U_total_exact
+println("L₂ error of w: ", L₂_w)
+println("L₂ error of φ: ", L₂_φ)
+println("L₂ error of Q: ", L₂_Q)
+# ──────────────────────────────────────────────────────────
+            sheet = xf[1]
+            XLSX.rename!(sheet, "circular")
+            sheet["A1"] = "type w"
+            sheet["B1"] = "nʷ"
+            sheet["C1"] = "type φ"
+            sheet["D1"] = "nᵠ"
+            sheet["E1"] = "type Q"
+            sheet["F1"] = "nᵛ"
+            sheet["G1"] = "L₂w"
+            sheet["H1"] = "L₂φ"
+            sheet["I1"] = "L₂Q"
+            sheet["A$row"] = "$type_w"
+            sheet["B$row"] = nʷ
+            sheet["C$row"] = "$type_φ"
+            sheet["D$row"] = nᵠ
+            sheet["E$row"] = "$type_q"
+            sheet["F$row"] = nᵛ
+            sheet["G$row"] = log10(L₂_w)
+            sheet["H$row"] = log10(L₂_φ)
+            sheet["I$row"] = log10(L₂_Q)
+        
     end
 end
 
 gmsh.finalize()
+
+println(to)
