@@ -14,7 +14,7 @@ import Gmsh: gmsh
 #   Γᵇ: bottom 径向边（x 轴）
 #   Γˡ: left   径向边（y 轴）
 #   Γᵉ: 外圆弧边界（r=R）
-#        𝐴: 圆心点
+#           𝐴: 圆心点
 # ─────────────────────────────────────────────────────────────
 
 
@@ -111,9 +111,9 @@ type_φ = :tri3
 type_q = :(PiecewisePolynomial{:Quadratic2D})
 # φ/Q 使用固定网格；w 用可变网格（保持与你的模板一致）
 ndiv_φ = 15
-ndiv_w = 15
+# ndiv_w = 15
 XLSX.openxlsx("xls/circular_clamped_mid.xlsx", mode="w") do xf
-    # for ndiv_w in 2:16
+     for ndiv_w in (3,6,9,12,15)
     row = ndiv_w
 
     # 1) w 网格（RK）
@@ -249,6 +249,21 @@ XLSX.openxlsx("xls/circular_clamped_mid.xlsx", mode="w") do xf
         @timeit to "get elements" elements_w_err = getElements(nodes_w, entities["Ω"], eval(type_w), integrationOrder_err, sp)
         @timeit to "get elements" elements_q_err = getPiecewiseElements(entities["Ω"], eval(type_q), integrationOrder_err)
 
+        # teacher's workaround: L₂Q 需要节点上存在 q₁/q₂；误差算例不关注该项时，补齐为 0 以避免 KeyError
+        # 注意：对 Vector{Node} 调用 push! 只会写入第一个节点；这里按节点逐个补齐。
+        uniq_nodes_q_err = Dict{Int,𝑿ᵢ}()
+        for elm in elements_q_err
+            for node in elm.𝓒
+                uniq_nodes_q_err[node.𝐼] = node
+            end
+        end
+        n_q_err = isempty(uniq_nodes_q_err) ? 0 : maximum(keys(uniq_nodes_q_err))
+        q₁_err = zeros(n_q_err)
+        q₂_err = zeros(n_q_err)
+        for node in values(uniq_nodes_q_err)
+            push!(node, :q₁ => q₁_err, :q₂ => q₂_err)
+        end
+
         prescribe!(elements_φ_err, :E => E, :ν => ν, :h => h, :φ₁ => φ₁_exact, :φ₂ => φ₂_exact)
         prescribe!(elements_w_err, :E => E, :ν => ν, :h => h, :u => w_exact)
         prescribe!(elements_q_err, :E => E, :ν => ν, :h => h, :Q₁ => Q₁_exact, :Q₂ => Q₂_exact)
@@ -290,7 +305,7 @@ XLSX.openxlsx("xls/circular_clamped_mid.xlsx", mode="w") do xf
     sheet["I$row"] = log10(L₂_Q)
 
 end
-# end
+ end
 
 gmsh.finalize()
 
