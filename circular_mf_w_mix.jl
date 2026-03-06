@@ -2,6 +2,8 @@ using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements, getPiecewiseElements, getPiecewiseBoundaryElements
 import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, L₂, L₂φ, L₂Q
 
+using InteractiveUtils
+
 using TimerOutputs, XLSX
 import Gmsh: gmsh
 
@@ -14,7 +16,7 @@ import Gmsh: gmsh
 #   Γᵇ: bottom 径向边（x 轴）
 #   Γˡ: left   径向边（y 轴）
 #   Γᵉ: 外圆弧边界（r=R）
-#           𝐴: 圆心点
+#                 𝐴: 圆心点
 # ─────────────────────────────────────────────────────────────
 
 
@@ -113,199 +115,241 @@ type_q = :(PiecewisePolynomial{:Quadratic2D})
 ndiv_φ = 15
 # ndiv_w = 15
 XLSX.openxlsx("xls/circular_clamped_mid.xlsx", mode="w") do xf
-     for ndiv_w in (3,6,9,12,15)
-    row = ndiv_w
+    for ndiv_w in (3, 6, 9, 12, 15)
+        row = ndiv_w
 
-    # 1) w 网格（RK）
-    @timeit to "open w msh" gmsh.open("msh/circular_tri3_$ndiv_w.msh")
-    @timeit to "get nodes_w" nodes_w = get𝑿ᵢ()
-    xʷ = nodes_w.x
-    yʷ = nodes_w.y
-    zʷ = nodes_w.z
-    nʷ = length(nodes_w)
+        # 1) w 网格（RK）
+        @timeit to "open w msh" gmsh.open("msh/circular_tri3_$ndiv_w.msh")
+        @timeit to "get nodes_w" nodes_w = get𝑿ᵢ()
+        xʷ = nodes_w.x
+        yʷ = nodes_w.y
+        zʷ = nodes_w.z
+        nʷ = length(nodes_w)
 
-    sp = RegularGrid(xʷ, yʷ, zʷ, n=3, γ=5)
-    s = (R) / (ndiv_w) # 以半径尺度做一个相对一致的支撑域
-    s₁ = 1.5 * s * ones(nʷ)
-    s₂ = 1.5 * s * ones(nʷ)
-    s₃ = 1.5 * s * ones(nʷ)
-    push!(nodes_w, :s₁ => s₁, :s₂ => s₂, :s₃ => s₃)
+        sp = RegularGrid(xʷ, yʷ, zʷ, n=3, γ=5)
+        s = (R) / (ndiv_w) # 以半径尺度做一个相对一致的支撑域
+        s₁ = 1.5 * s * ones(nʷ)
+        s₂ = 1.5 * s * ones(nʷ)
+        s₃ = 1.5 * s * ones(nʷ)
+        push!(nodes_w, :s₁ => s₁, :s₂ => s₂, :s₃ => s₃)
 
-    # 2) φ/Q 网格（固定）
-    @timeit to "open φ msh" gmsh.open("msh/circular_tri3_$ndiv_φ.msh")
-    @timeit to "get nodes_φ" nodes_φ = get𝑿ᵢ()
-    @timeit to "get entities" entities = getPhysicalGroups()
+        # 2) φ/Q 网格（固定）
+        @timeit to "open φ msh" gmsh.open("msh/circular_tri3_$ndiv_φ.msh")
+        @timeit to "get nodes_φ" nodes_φ = get𝑿ᵢ()
+        @timeit to "get entities" entities = getPhysicalGroups()
 
-    # 物理组 Γ 在 msh 里可能与 Γᵇ/Γᵉ/Γˡ 重叠并导致边界元素重复；这里显式用三段边界并集代替 Γ。
-    Γall = let
-        dim_b, tags_b = entities["Γᵇ"]
-        dim_e, tags_e = entities["Γᵉ"]
-        dim_l, tags_l = entities["Γˡ"]
-        @assert dim_b == 1 && dim_e == 1 && dim_l == 1
-        1 => unique(vcat(tags_b, tags_e, tags_l))
-    end
-
-    # 3) 主域 elements
-    @timeit to "calculate main elements" begin
-        elements_φ = getElements(nodes_φ, entities["Ω"], integrationOrder)
-        elements_w = getElements(nodes_w, entities["Ω"], eval(type_w), integrationOrder, sp)
-        elements_q = getPiecewiseElements(entities["Ω"], eval(type_q), integrationOrder)
-    end
-
-    nₑ = length(elements_φ)
-    nᵠ = length(nodes_φ)
-    nᵛ = nₑ * ApproxOperator.get𝑛𝑝(elements_q[1])
-
-    kʷʷ = zeros(nʷ, nʷ)
-    kᵛʷ = zeros(2 * nᵛ, nʷ)
-    kᵠʷ = zeros(2 * nᵠ, nʷ)
-    fʷ = zeros(nʷ)
-
-    kᵠᵠ = zeros(2 * nᵠ, 2 * nᵠ)
-    kᵛᵛ = zeros(2 * nᵛ, 2 * nᵛ)
-    kᵛᵠ = zeros(2 * nᵛ, 2 * nᵠ)
-    fᵠ = zeros(2 * nᵠ)
-    fᵛ = zeros(2 * nᵛ)
-
-    @timeit to "calculate ∫κκdΩ" begin
-        @timeit to "get elements" elements_w_Γ = getElements(nodes_w, Γall, eval(type_w), integrationOrder, sp, normal=true)
-        @timeit to "get elements" elements_q_Γ = getPiecewiseBoundaryElements(Γall, entities["Ω"], eval(type_q), integrationOrder)
-
-        prescribe!(elements_φ, :E => E, :ν => ν, :h => h)
-        prescribe!(elements_q, :E => E, :ν => ν, :h => h)
-        prescribe!(elements_w, :E => E, :ν => ν, :h => h, :q => q_load)
-
-        @timeit to "calculate shape functions" set∇𝝭!(elements_φ)
-        @timeit to "calculate shape functions" set∇𝝭!(elements_q)
-        @timeit to "calculate shape functions" set∇𝝭!(elements_w)
-        @timeit to "calculate shape functions" set𝝭!(elements_w_Γ)
-        @timeit to "calculate shape functions" set𝝭!(elements_q_Γ)
-
-        𝑎ᵠᵠ = ∫κκdΩ => elements_φ
-        𝑎ᵛᵠ = ∫QφdΩ => (elements_q, elements_φ)
-        𝑎ᵛᵛ = ∫QQdΩ => elements_q
-        𝑎ᵛʷ = [
-            ∫∇QwdΩ => (elements_q, elements_w),
-            ∫QwdΓ => (elements_q_Γ, elements_w_Γ),
-        ]
-        𝑓ʷ_ = ∫wqdΩ => elements_w
-
-        @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
-        @timeit to "assemble" 𝑎ᵛᵛ(kᵛᵛ)
-        @timeit to "assemble" 𝑎ᵛᵠ(kᵛᵠ)
-        @timeit to "assemble" 𝑎ᵛʷ(kᵛʷ)
-        @timeit to "assemble" 𝑓ʷ_(fʷ)
-    end
-
-    @timeit to "calculate ∫αwwdΓ" begin
-        @timeit to "get elements" elements_w_bc = getElements(nodes_w, Γall, eval(type_w), integrationOrder, sp, normal=true)
-        prescribe!(elements_w_bc, :α => 1e8 * E, :g => w_bc)
-        @timeit to "calculate shape functions" set𝝭!(elements_w_bc)
-        𝑎ʷ = ∫αwwdΓ => elements_w_bc
-        @timeit to "assemble" 𝑎ʷ(kʷʷ, fʷ)
-    end
-
-    @timeit to "calculate ∫αφφdΓ" begin
-        @timeit to "get elements" elements_φ_bc = getElements(nodes_φ, Γall, integrationOrder, normal=true)
-        prescribe!(elements_φ_bc, :α => 1e8 * E, :g₁ => φ₁_bc, :g₂ => φ₂_bc, :n₁₁ => 1.0, :n₁₂ => 0.0, :n₂₂ => 1.0)
-        @timeit to "calculate shape functions" set𝝭!(elements_φ_bc)
-        𝑎ᵠ = ∫αφφdΓ => elements_φ_bc
-        @timeit to "assemble" 𝑎ᵠ(kᵠᵠ, fᵠ)
-    end
-
-    @timeit to "calculate ∫QwdΓ" begin
-        @timeit to "get elements" elements_q_Γ = getPiecewiseBoundaryElements(Γall, entities["Ω"], eval(type_q), integrationOrder)
-        # elements_q_Γ 已由 Γall 生成，无需再用 Γall 自筛选一次（该函数依赖元素拼接顺序，易出现越界）
-        @timeit to "get elements" elements_w_bc = getElements(nodes_w, Γall, eval(type_w), integrationOrder, sp, normal=true)
-
-        prescribe!(elements_w_bc, :g => w_bc)
-        @timeit to "calculate shape functions" set𝝭!(elements_q_Γ)
-        @timeit to "calculate shape functions" set𝝭!(elements_w_bc)
-
-        𝑎ᵛ = ∫QwdΓ => (elements_q_Γ, elements_w_bc)
-        @timeit to "assemble" 𝑎ᵛ(kᵛʷ, fᵛ)
-    end
-
-    # 6) 求解
-    @timeit to "solve" d = [kᵠᵠ kᵠʷ kᵛᵠ';
-        kᵠʷ' kʷʷ kᵛʷ';
-        kᵛᵠ kᵛʷ kᵛᵛ] \ [fᵠ; fʷ; fᵛ]
-
-    # 7) 回填（模板同款）
-    nodes_q = 𝑿ᵢ[]
-    for elm in elements_q
-        for node in elm.𝓒
-            push!(nodes_q, node)
+        # 物理组 Γ 在 msh 里可能与 Γᵇ/Γᵉ/Γˡ 重叠并导致边界元素重复；这里显式用三段边界并集代替 Γ。
+        Γb = entities["Γᵇ"]
+        Γe = entities["Γᵉ"]
+        Γl = entities["Γˡ"]
+        Γall = let
+            dim_b, tags_b = Γb
+            dim_e, tags_e = Γe
+            dim_l, tags_l = Γl
+            @assert dim_b == 1 && dim_e == 1 && dim_l == 1
+            1 => unique(vcat(tags_b, tags_e, tags_l))
         end
-    end
 
-    push!(nodes_φ, :d₁ => d[1:2:2*nᵠ], :d₂ => d[2:2:2*nᵠ])
-    push!(nodes_w, :d => d[2*nᵠ+1:2*nᵠ+nʷ])
-    push!(nodes_q, :q₁ => d[2*nᵠ+nʷ+1:2:end], :q₂ => d[2*nᵠ+nʷ+2:2:end])
+        # 3) 主域 elements
+        @timeit to "calculate main elements" begin
+            elements_φ = getElements(nodes_φ, entities["Ω"], integrationOrder)
+            elements_w = getElements(nodes_w, entities["Ω"], eval(type_w), integrationOrder, sp)
+            elements_q = getPiecewiseElements(entities["Ω"], eval(type_q), integrationOrder)
+        end
 
-    # 8) 误差（用精确解）
-    @timeit to "calculate error" begin
-        @timeit to "get elements" elements_φ_err = getElements(nodes_φ, entities["Ω"], integrationOrder_err)
-        @timeit to "get elements" elements_w_err = getElements(nodes_w, entities["Ω"], eval(type_w), integrationOrder_err, sp)
-        @timeit to "get elements" elements_q_err = getPiecewiseElements(entities["Ω"], eval(type_q), integrationOrder_err)
+        nₑ = length(elements_φ)
+        nᵠ = length(nodes_φ)
+        nᵛ = nₑ * ApproxOperator.get𝑛𝑝(elements_q[1])
 
-        # teacher's workaround: L₂Q 需要节点上存在 q₁/q₂；误差算例不关注该项时，补齐为 0 以避免 KeyError
-        # 注意：对 Vector{Node} 调用 push! 只会写入第一个节点；这里按节点逐个补齐。
-        uniq_nodes_q_err = Dict{Int,𝑿ᵢ}()
-        for elm in elements_q_err
+        kʷʷ = zeros(nʷ, nʷ)
+        kᵛʷ = zeros(2 * nᵛ, nʷ)
+        kᵠʷ = zeros(2 * nᵠ, nʷ)
+        fʷ = zeros(nʷ)
+
+        kᵠᵠ = zeros(2 * nᵠ, 2 * nᵠ)
+        kᵛᵛ = zeros(2 * nᵛ, 2 * nᵛ)
+        kᵛᵠ = zeros(2 * nᵛ, 2 * nᵠ)
+        fᵠ = zeros(2 * nᵠ)
+        fᵛ = zeros(2 * nᵛ)
+
+        @timeit to "calculate ∫κκdΩ" begin
+            # 边界积分项：对齐 Katili 圆板算例，仅在外圆弧 Γᵉ 上施加（对称边不应参与该边界项）
+            @timeit to "get elements" elements_w_Γe = getElements(nodes_w, Γe, eval(type_w), integrationOrder, sp, normal=true)
+            @timeit to "get elements" elements_q_Γe = getPiecewiseBoundaryElements(Γe, entities["Ω"], eval(type_q), integrationOrder)
+
+            prescribe!(elements_φ, :E => E, :ν => ν, :h => h)
+            prescribe!(elements_q, :E => E, :ν => ν, :h => h)
+            prescribe!(elements_w, :E => E, :ν => ν, :h => h, :q => q_load)
+
+            @timeit to "calculate shape functions" set∇𝝭!(elements_φ)
+            @timeit to "calculate shape functions" set∇𝝭!(elements_q)
+            @timeit to "calculate shape functions" set∇𝝭!(elements_w)
+            @timeit to "calculate shape functions" set𝝭!(elements_w_Γe)
+            @timeit to "calculate shape functions" set𝝭!(elements_q_Γe)
+
+            𝑎ᵠᵠ = ∫κκdΩ => elements_φ
+            𝑎ᵛᵠ = ∫QφdΩ => (elements_q, elements_φ)
+            𝑎ᵛᵛ = ∫QQdΩ => elements_q
+            𝑎ᵛʷ = [
+                ∫∇QwdΩ => (elements_q, elements_w),
+                ∫QwdΓ => (elements_q_Γe, elements_w_Γe),
+            ]
+            𝑓ʷ_ = ∫wqdΩ => elements_w
+
+            @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
+            @timeit to "assemble" 𝑎ᵛᵛ(kᵛᵛ)
+            @timeit to "assemble" 𝑎ᵛᵠ(kᵛᵠ)
+            @timeit to "assemble" 𝑎ᵛʷ(kᵛʷ)
+            @timeit to "assemble" 𝑓ʷ_(fʷ)
+        end
+
+        @timeit to "calculate ∫αwwdΓ" begin
+            # Katili 1993：外圆弧 clamped => 仅在 Γᵉ 上施加 w=0；对称边不强制 w=0
+            @timeit to "get elements" elements_w_bc = getElements(nodes_w, Γe, eval(type_w), integrationOrder, sp, normal=true)
+            prescribe!(elements_w_bc, :α => 1e8 * E, :g => w_bc)
+            @timeit to "calculate shape functions" set𝝭!(elements_w_bc)
+            𝑎ʷ = ∫αwwdΓ => elements_w_bc
+            @timeit to "assemble" 𝑎ʷ(kʷʷ, fʷ)
+        end
+
+        @timeit to "calculate ∫αφφdΓ" begin
+            # Katili 1993：
+            # - 外圆弧 Γᵉ：βx=βy=0
+            # - 对称边 Γˡ(x=0)：βx=0
+            # - 对称边 Γᵇ(y=0)：βy=0
+            αbc = 1e8 * E
+
+            # Γᵉ: βx=βy=0
+            @timeit to "get elements" elements_φ_e = getElements(nodes_φ, Γe, integrationOrder, normal=true)
+            prescribe!(elements_φ_e, :α => αbc, :g₁ => φ₁_bc, :g₂ => φ₂_bc, :n₁₁ => 1.0, :n₁₂ => 0.0, :n₂₂ => 1.0)
+            @timeit to "calculate shape functions" set𝝭!(elements_φ_e)
+            𝑎ᵠe = ∫αφφdΓ => elements_φ_e
+            @timeit to "assemble" 𝑎ᵠe(kᵠᵠ, fᵠ)
+
+            # Γˡ(x=0): βx=0 (only φ₁)
+            @timeit to "get elements" elements_φ_l = getElements(nodes_φ, Γl, integrationOrder, normal=true)
+            prescribe!(elements_φ_l, :α => αbc, :g₁ => φ₁_bc, :g₂ => φ₂_bc, :n₁₁ => 1.0, :n₁₂ => 0.0, :n₂₂ => 0.0)
+            @timeit to "calculate shape functions" set𝝭!(elements_φ_l)
+            𝑎ᵠl = ∫αφφdΓ => elements_φ_l
+            @timeit to "assemble" 𝑎ᵠl(kᵠᵠ, fᵠ)
+
+            # Γᵇ(y=0): βy=0 (only φ₂)
+            @timeit to "get elements" elements_φ_b = getElements(nodes_φ, Γb, integrationOrder, normal=true)
+            prescribe!(elements_φ_b, :α => αbc, :g₁ => φ₁_bc, :g₂ => φ₂_bc, :n₁₁ => 0.0, :n₁₂ => 0.0, :n₂₂ => 1.0)
+            @timeit to "calculate shape functions" set𝝭!(elements_φ_b)
+            𝑎ᵠb = ∫αφφdΓ => elements_φ_b
+            @timeit to "assemble" 𝑎ᵠb(kᵠᵠ, fᵠ)
+        end
+
+        # 6) 求解
+        @timeit to "solve" d = [kᵠᵠ kᵠʷ kᵛᵠ';
+            kᵠʷ' kʷʷ kᵛʷ';
+            kᵛᵠ kᵛʷ kᵛᵛ] \ [fᵠ; fʷ; fᵛ]
+
+        # 7) 回填（模板同款）
+        nodes_q = 𝑿ᵢ[]
+        for elm in elements_q
             for node in elm.𝓒
-                uniq_nodes_q_err[node.𝐼] = node
+                push!(nodes_q, node)
             end
         end
-        n_q_err = isempty(uniq_nodes_q_err) ? 0 : maximum(keys(uniq_nodes_q_err))
-        q₁_err = zeros(n_q_err)
-        q₂_err = zeros(n_q_err)
-        for node in values(uniq_nodes_q_err)
-            push!(node, :q₁ => q₁_err, :q₂ => q₂_err)
+
+        push!(nodes_φ, :d₁ => d[1:2:2*nᵠ], :d₂ => d[2:2:2*nᵠ])
+        d_w = d[2*nᵠ+1:2*nᵠ+nʷ]
+        push!(nodes_w, :d => d_w)
+        push!(nodes_q, :q₁ => d[2*nᵠ+nʷ+1:2:end], :q₂ => d[2*nᵠ+nʷ+2:2:end])
+
+        # ──────────────────────────────────────────────────────────
+        # quick validation: ensure error evaluation sees the numerical solution
+        println("[diag] max |nodes_w.d| = ", maximum(abs.(nodes_w.d)))
+
+        # 8) 误差（用精确解）
+        @timeit to "calculate error" begin
+            @timeit to "get elements" elements_φ_err = getElements(nodes_φ, entities["Ω"], integrationOrder_err)
+            @timeit to "get elements" elements_w_err = getElements(nodes_w, entities["Ω"], eval(type_w), integrationOrder_err, sp)
+            @timeit to "get elements" elements_q_err = getPiecewiseElements(entities["Ω"], eval(type_q), integrationOrder_err)
+
+            # Step 2: ensure all nodes referenced by elements_w_err share the same displacement vector d_w
+            uniq_nodes_w_err = Dict{Int,𝑿ᵢ}()
+            for elm in elements_w_err
+                for node in elm.𝓒
+                    uniq_nodes_w_err[node.𝐼] = node
+                end
+            end
+            for node in values(uniq_nodes_w_err)
+                push!(node, :d => d_w)
+            end
+
+            # Step 3: robust diagnostic (index/value consistency instead of object-identity)
+            if !isempty(elements_w_err) && !isempty(elements_w_err[1].𝓒)
+                node = elements_w_err[1].𝓒[1]
+                I = node.𝐼
+                println("[diag] sample node I = ", I, " / nʷ = ", nʷ)
+                try
+                    println("[diag] sample node.d = ", node.d, ", d_w[I] = ", d_w[I], ", |Δ| = ", abs(node.d - d_w[I]))
+                catch e
+                    println("[diag] sample node diagnostic failed (", typeof(e), ")")
+                end
+            end
+            # ──────────────────────────────────────────────────────────
+
+            # teacher's workaround: L₂Q 需要节点上存在 q₁/q₂；误差算例不关注该项时，补齐为 0 以避免 KeyError
+            # 注意：对 Vector{Node} 调用 push! 只会写入第一个节点；这里按节点逐个补齐。
+            uniq_nodes_q_err = Dict{Int,𝑿ᵢ}()
+            for elm in elements_q_err
+                for node in elm.𝓒
+                    uniq_nodes_q_err[node.𝐼] = node
+                end
+            end
+            n_q_err = isempty(uniq_nodes_q_err) ? 0 : maximum(keys(uniq_nodes_q_err))
+            q₁_err = zeros(n_q_err)
+            q₂_err = zeros(n_q_err)
+            for node in values(uniq_nodes_q_err)
+                push!(node, :q₁ => q₁_err, :q₂ => q₂_err)
+            end
+
+            prescribe!(elements_φ_err, :E => E, :ν => ν, :h => h, :φ₁ => φ₁_exact, :φ₂ => φ₂_exact)
+            prescribe!(elements_w_err, :E => E, :ν => ν, :h => h, :u => w_exact)
+            prescribe!(elements_q_err, :E => E, :ν => ν, :h => h, :Q₁ => Q₁_exact, :Q₂ => Q₂_exact)
+
+            @timeit to "calculate shape functions" set𝝭!(elements_φ_err)
+            @timeit to "calculate shape functions" set𝝭!(elements_w_err)
+            @timeit to "calculate shape functions" set𝝭!(elements_q_err)
+
+            L₂_w = L₂(elements_w_err)
+            L₂_φ = L₂φ(elements_φ_err)
+            L₂_Q = L₂Q(elements_q_err)
         end
 
-        prescribe!(elements_φ_err, :E => E, :ν => ν, :h => h, :φ₁ => φ₁_exact, :φ₂ => φ₂_exact)
-        prescribe!(elements_w_err, :E => E, :ν => ν, :h => h, :u => w_exact)
-        prescribe!(elements_q_err, :E => E, :ν => ν, :h => h, :Q₁ => Q₁_exact, :Q₂ => Q₂_exact)
+        println(to)
 
-        @timeit to "calculate shape functions" set𝝭!(elements_φ_err)
-        @timeit to "calculate shape functions" set𝝭!(elements_w_err)
-        @timeit to "calculate shape functions" set𝝭!(elements_q_err)
+        println("L₂ error of w: ", L₂_w)
+        println("L₂ error of φ: ", L₂_φ)
+        println("L₂ error of Q: ", L₂_Q)
+        # ──────────────────────────────────────────────────────────
+        sheet = xf[1]
+        XLSX.rename!(sheet, "circular")
+        sheet["A1"] = "type w"
+        sheet["B1"] = "nʷ"
+        sheet["C1"] = "type φ"
+        sheet["D1"] = "nᵠ"
+        sheet["E1"] = "type Q"
+        sheet["F1"] = "nᵛ"
+        sheet["G1"] = "L₂w"
+        sheet["H1"] = "L₂φ"
+        sheet["I1"] = "L₂Q"
+        sheet["A$row"] = "$type_w"
+        sheet["B$row"] = nʷ
+        sheet["C$row"] = "$type_φ"
+        sheet["D$row"] = nᵠ
+        sheet["E$row"] = "$type_q"
+        sheet["F$row"] = nᵛ
+        sheet["G$row"] = log10(L₂_w)
+        sheet["H$row"] = log10(L₂_φ)
+        sheet["I$row"] = log10(L₂_Q)
 
-        L₂_w = L₂(elements_w_err)
-        L₂_φ = L₂φ(elements_φ_err)
-        L₂_Q = L₂Q(elements_q_err)
     end
-
-    println(to)
-
-    println("L₂ error of w: ", L₂_w)
-    println("L₂ error of φ: ", L₂_φ)
-    println("L₂ error of Q: ", L₂_Q)
-    # ──────────────────────────────────────────────────────────
-    sheet = xf[1]
-    XLSX.rename!(sheet, "circular")
-    sheet["A1"] = "type w"
-    sheet["B1"] = "nʷ"
-    sheet["C1"] = "type φ"
-    sheet["D1"] = "nᵠ"
-    sheet["E1"] = "type Q"
-    sheet["F1"] = "nᵛ"
-    sheet["G1"] = "L₂w"
-    sheet["H1"] = "L₂φ"
-    sheet["I1"] = "L₂Q"
-    sheet["A$row"] = "$type_w"
-    sheet["B$row"] = nʷ
-    sheet["C$row"] = "$type_φ"
-    sheet["D$row"] = nᵠ
-    sheet["E$row"] = "$type_q"
-    sheet["F$row"] = nᵛ
-    sheet["G$row"] = log10(L₂_w)
-    sheet["H$row"] = log10(L₂_φ)
-    sheet["I$row"] = log10(L₂_Q)
-
 end
- end
 
 gmsh.finalize()
 
