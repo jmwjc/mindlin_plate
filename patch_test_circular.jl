@@ -5,65 +5,55 @@ import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫wwdΩ, ∫φφdΩ, ∫φwdΩ,
 using TimerOutputs
 import Gmsh: gmsh
 
+# penalty（与 patch_test.jl 一致）
+
 E = 1.0
 ν = 0.3
 h = 1e-1
-Dᵇ = E * h^3 / 12 / (1 - ν^2)
-Dˢ = 5 / 6 * E * h / (2 * (1 + ν))
-
-# penalty（与 patch_test.jl 一致）
+Dᵇ = E*h^3/12/(1-ν^2)
+Dˢ = 5/6*E*h/(2*(1+ν))
 α = 1e8 * E
 
-# 制造解（阶段一严格线性 patch：w=ax+by+c，φ=∇w 常数；所有高阶导数为 0）
-w(x, y, z) = 1.0 + x + y
-w₁(x, y, z) = 1.0
-w₂(x, y, z) = 1.0
-w₁₁(x, y, z) = 0.0
-w₂₂(x, y, z) = 0.0
+r = 1
+w(x,y,z) = (x+y)^r
+w₁(x,y,z) = r*(x+y)^abs(r-1)
+w₂(x,y,z) = r*(x+y)^abs(r-1)
+w₁₁(x,y,z) = r*(r-1)*(x+y)^abs(r-2)
+w₂₂(x,y,z) = r*(r-1)*(x+y)^abs(r-2)
+φ₁(x,y,z) = r*(x+y)^abs(r-1)
+φ₂(x,y,z) = r*(x+y)^abs(r-1)
+φ₁₁(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
+φ₁₂(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
+φ₂₁(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
+φ₂₂(x,y,z)  = r*(r-1)*(x+y)^abs(r-2)
+φ₁₁₁(x,y,z)  = r*(r-1)*(r-2)*(x+y)^abs(r-3)
+φ₁₁₂(x,y,z)  = r*(r-1)*(r-2)*(x+y)^abs(r-3)
+φ₂₂₁(x,y,z)  = r*(r-1)*(r-2)*(x+y)^abs(r-3)
+φ₂₂₂(x,y,z)  = r*(r-1)*(r-2)*(x+y)^abs(r-3)
+φ₁₂₁(x,y,z)  = r*(r-1)*(r-2)*(x+y)^abs(r-3)
+φ₁₂₂(x,y,z)  = r*(r-1)*(r-2)*(x+y)^abs(r-3)
 
-# φ=∇w
-φ₁(x, y, z) = w₁(x, y, z)
-φ₂(x, y, z) = w₂(x, y, z)
+M₁₁(x,y,z)= -Dᵇ*(φ₁₁(x,y,z)+ν*φ₂₂(x,y,z))
+M₁₂(x,y,z)= -Dᵇ*(1-ν)*0.5*(φ₁₂(x,y,z)+φ₂₁(x,y,z))
+M₂₂(x,y,z)= -Dᵇ*(ν*φ₁₁(x,y,z)+φ₂₂(x,y,z))
+M₁₁₁(x,y,z)= -Dᵇ*(φ₁₁₁(x,y,z)+ν*φ₂₂₁(x,y,z))
+M₁₂₂(x,y,z)= -Dᵇ*(1-ν)*φ₁₂₂(x,y,z)
+M₁₂₁(x,y,z)= -Dᵇ*(1-ν)*φ₁₂₁(x,y,z)
+M₂₂₂(x,y,z)= -Dᵇ*(ν*φ₁₁₂(x,y,z)+φ₂₂₂(x,y,z))
 
-# φ 的各阶导数（没有的填 0）
-φ₁₁(x, y, z) = 0.0
-φ₁₂(x, y, z) = 0.0
-φ₂₁(x, y, z) = 0.0
-φ₂₂(x, y, z) = 0.0
-φ₁₁₁(x, y, z) = 0.0
-φ₁₁₂(x, y, z) = 0.0
-φ₂₂₁(x, y, z) = 0.0
-φ₂₂₂(x, y, z) = 0.0
-φ₁₂₁(x, y, z) = 0.0
-φ₁₂₂(x, y, z) = 0.0
+Q₁(x,y,z) = Dˢ*(w₁(x,y,z)-φ₁(x,y,z))
+Q₂(x,y,z) = Dˢ*(w₂(x,y,z)-φ₂(x,y,z))
+Q₁₁(x,y,z) = Dˢ*(w₁₁(x,y,z)-φ₁₁(x,y,z))
+Q₂₂(x,y,z) = Dˢ*(w₂₂(x,y,z)-φ₂₂(x,y,z))
+q(x,y,z)=-Q₁₁(x,y,z)-Q₂₂(x,y,z)
+m₁(x,y,z) = M₁₁₁(x,y,z)+M₁₂₂(x,y,z) - Q₁(x,y,z)
+m₂(x,y,z) = M₁₂₁(x,y,z)+M₂₂₂(x,y,z) - Q₂(x,y,z)
 
-# 对严格线性 patch：M=0, Q=0 ⇒ q=m=0（仍显式写全，便于后续升级阶次）
-M₁₁(x, y, z) = 0.0
-M₁₂(x, y, z) = 0.0
-M₂₂(x, y, z) = 0.0
-M₁₁₁(x, y, z) = 0.0
-M₁₂₂(x, y, z) = 0.0
-M₁₂₁(x, y, z) = 0.0
-M₂₂₂(x, y, z) = 0.0
-
-Q₁(x, y, z) = 0.0
-Q₂(x, y, z) = 0.0
-Q₁₁(x, y, z) = 0.0
-Q₂₂(x, y, z) = 0.0
-
-q(x, y, z) = 0.0
-m₁(x, y, z) = 0.0
-m₂(x, y, z) = 0.0
-
-# 边界项写全：阶段一先全部填 0（之后替换成对应精确解的 V、M₁、M₂ 即可做阶段二）
-V(x, y, z) = 0.0
-M₁(x, y, z) = 0.0
-M₂(x, y, z) = 0.0
 
 const to = TimerOutput()
 
 gmsh.initialize()
-@timeit to "open msh file" gmsh.open("/home/jason/vscode/mindlin_plate/msh/circular_tri3_3.msh")
+@timeit to "open msh file" gmsh.open("./msh/circular_tri3_3.msh")
 @timeit to "get entities" entities = getPhysicalGroups()
 @timeit to "get nodes" nodes = get𝑿ᵢ()
 
@@ -81,35 +71,42 @@ fᵠ = zeros(2 * nᵠ)
     prescribe!(elements, :E => E, :ν => ν, :h => h, :q => q, :m₁ => m₁, :m₂ => m₂)
     set∇𝝭!(elements)
 
-    (∫wwdΩ => elements)(kʷʷ)
-    (∫φwdΩ => elements)(kᵠʷ)
-    (∫φφdΩ => elements)(kᵠᵠ)
-    (∫κκdΩ => elements)(kᵠᵠ)
-
-    (∫wqdΩ => elements)(fʷ)
-    (∫φmdΩ => elements)(fᵠ)
+    𝑎ʷʷ = ∫wwdΩ=>elements
+    𝑎ᵠʷ = ∫φwdΩ=>elements
+    𝑎ᵠᵠ = [
+        ∫φφdΩ=>elements,
+        ∫κκdΩ=>elements,
+    ]
+    𝑓ʷ = ∫wqdΩ=>elements
+    𝑓ᵠ = ∫φmdΩ=>elements
+    @timeit to "assemble" 𝑎ʷʷ(kʷʷ)
+    @timeit to "assemble" 𝑎ᵠʷ(kᵠʷ)
+    @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
+    @timeit to "assemble" 𝑓ʷ(fʷ)
+    @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
 @timeit to "assemble boundary penalties" begin
     bnd_names = sort([k for k in keys(entities) if startswith(k, "Γ")])
     isempty(bnd_names) && error("No boundary physical groups found (keys starting with 'Γ'). Available keys=$(collect(keys(entities)))")
 
-    for name in bnd_names
+    for name in bnd_names[2:4]
+        println(name)
         elements_Γ = getElements(nodes, entities[name])
         set𝝭!(elements_Γ)
 
-        prescribe!(elements_Γ, :α => α, :g => w)
-        (∫αwwdΓ => elements_Γ)(kʷʷ, fʷ)
-
-        prescribe!(elements_Γ, :α => α, :g₁ => φ₁, :g₂ => φ₂, :n₁₁ => 1.0, :n₁₂ => 0.0, :n₂₂ => 1.0)
-        (∫αφφdΓ => elements_Γ)(kᵠᵠ, fᵠ)
+        prescribe!(elements_Γ, :α => α, :g => w, :g₁ => φ₁, :g₂ => φ₂, :n₁₁ => 1.0, :n₁₂ => 0.0, :n₂₂ => 1.0)
+        𝑎ʷ = ∫αwwdΓ => elements_Γ
+        𝑎ᵠ = ∫αφφdΓ => elements_Γ
+        @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
+        @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
 
         # 自然边界项（阶段一为 0，但显式装配以保持结构一致）
-        prescribe!(elements_Γ, :V => V)
-        (∫wVdΓ => elements_Γ)(fʷ)
+        # prescribe!(elements_Γ, :V => V)
+        # (∫wVdΓ => elements_Γ)(fʷ)
 
-        prescribe!(elements_Γ, :M₁ => M₁, :M₂ => M₂)
-        (∫φMdΓ => elements_Γ)(fᵠ)
+        # prescribe!(elements_Γ, :M₁ => M₁, :M₂ => M₂)
+        # (∫φMdΓ => elements_Γ)(fᵠ)
     end
 end
 
