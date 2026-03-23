@@ -86,28 +86,75 @@ fᵠ = zeros(2 * nᵠ)
     @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
-@timeit to "assemble boundary penalties" begin
-    bnd_names = sort([k for k in keys(entities) if startswith(k, "Γ")])
-    isempty(bnd_names) && error("No boundary physical groups found (keys starting with 'Γ'). Available keys=$(collect(keys(entities)))")
+@timeit to "Γᵉ" begin
+    elements = getElements(nodes, entities["Γᵉ"])
+    set𝝭!(elements)
 
-    for name in bnd_names[2:4]
-        println(name)
-        elements_Γ = getElements(nodes, entities[name])
-        set𝝭!(elements_Γ)
+    prescribe!(elements, 
+        :α => α,
+        :g => w,
+        :g₁ => φ₁,
+        :g₂ => φ₂,
+        :n₁₁ => 1.0,
+        :n₁₂ => 0.0,
+        :n₂₂ => 1.0
+    )
+    𝑎ʷ = ∫αwwdΓ => elements
+    𝑎ᵠ = ∫αφφdΓ => elements
+    @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
+    @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
+end
 
-        prescribe!(elements_Γ, :α => α, :g => w, :g₁ => φ₁, :g₂ => φ₂, :n₁₁ => 1.0, :n₁₂ => 0.0, :n₂₂ => 1.0)
-        𝑎ʷ = ∫αwwdΓ => elements_Γ
-        𝑎ᵠ = ∫αφφdΓ => elements_Γ
-        @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
-        @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
+@timeit to "Γˡ" begin
+    elements = getElements(nodes, entities["Γˡ"],normal=true)
+    set𝝭!(elements)
 
-        # 自然边界项（阶段一为 0，但显式装配以保持结构一致）
-        # prescribe!(elements_Γ, :V => V)
-        # (∫wVdΓ => elements_Γ)(fʷ)
+    prescribe!(elements, 
+        :α => α,
+        :g => w,
+        :g₁ => φ₁,
+        :g₂ => φ₂,
+        :n₁₁ => 1.0,
+        :n₁₂ => 0.0,
+        :n₂₂ => 0.0,
+        :V => (x,y,z,n₁,n₂)->Q₁(x,y,z)*n₁ + Q₂(x,y,z)*n₂,
+        :M₁ => 0.0,
+        :M₂ => (x,y,z,n₁,n₂)->M₁₂(x,y,z)*n₁ + M₂₂(x,y,z)*n₂,
+    )
+    𝑎ʷ = ∫αwwdΓ => elements
+    𝑎ᵠ = ∫αφφdΓ => elements
+    𝑓ʷ = ∫wVdΓ => elements
+    𝑓ᵠ = ∫φMdΓ => elements
+    # @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
+    @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
+    @timeit to "assemble" 𝑓ʷ(fʷ)
+    @timeit to "assemble" 𝑓ᵠ(fᵠ)
+end
 
-        # prescribe!(elements_Γ, :M₁ => M₁, :M₂ => M₂)
-        # (∫φMdΓ => elements_Γ)(fᵠ)
-    end
+@timeit to "Γᵇ" begin
+    elements = getElements(nodes, entities["Γᵇ"],normal=true)
+    set𝝭!(elements)
+
+    prescribe!(elements, 
+        :α => α,
+        :g => w,
+        :g₁ => φ₁,
+        :g₂ => φ₂,
+        :n₁₁ => 0.0,
+        :n₁₂ => 0.0,
+        :n₂₂ => 1.0,
+        :V => (x,y,z,n₁,n₂)->Q₁(x,y,z)*n₁ + Q₂(x,y,z)*n₂,
+        :M₁ => (x,y,z,n₁,n₂)->M₁₁(x,y,z)*n₁ + M₁₂(x,y,z)*n₂,
+        :M₂ => 0.0,
+    )
+    𝑎ʷ = ∫αwwdΓ => elements
+    𝑎ᵠ = ∫αφφdΓ => elements
+    𝑓ʷ = ∫wVdΓ => elements
+    𝑓ᵠ = ∫φMdΓ => elements
+    # @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
+    @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
+    @timeit to "assemble" 𝑓ʷ(fʷ)
+    @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
 @timeit to "solve" d = [kᵠᵠ kᵠʷ; kᵠʷ' kʷʷ] \ [fᵠ; fʷ]
