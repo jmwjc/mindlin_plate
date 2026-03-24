@@ -244,30 +244,6 @@ println("  node2: d=", nodes[2].d, " d₁=", nodes[2].d₁, " d₂=", nodes[2].d
 # Γᵇ: φ2=0
 # Γˡ: φ1=0
 
-if !ENABLE_MANUFACTURED_ERROR
-    # entities[gname] 在当前导入器中是 Pair{Int,Vector{Int}}，第二项为节点编号列表
-    maxabs_field_on_group = function (nodes, entities, gname::String, field::Symbol)
-        haskey(entities, gname) || return NaN
-        grp = entities[gname]
-        idx = unique(grp.second)
-        m = 0.0
-        for i in idx
-            v = getproperty(nodes[i], field)
-            m = max(m, abs(v))
-        end
-        return m
-    end
-
-    println("boundary check (max abs on boundary nodes):")
-    println("  Γᵉ: max|w|  = ", maxabs_field_on_group(nodes, entities, "Γᵉ", :d))
-    println("  Γᵉ: max|φ1| = ", maxabs_field_on_group(nodes, entities, "Γᵉ", :d₁))
-    println("  Γᵉ: max|φ2| = ", maxabs_field_on_group(nodes, entities, "Γᵉ", :d₂))
-    println("  Γᵇ: max|φ2| = ", maxabs_field_on_group(nodes, entities, "Γᵇ", :d₂))
-    println("  Γˡ: max|φ1| = ", maxabs_field_on_group(nodes, entities, "Γˡ", :d₁))
-end
-
-# 恢复原误差段（但默认关闭）
-if ENABLE_MANUFACTURED_ERROR
     @timeit to "calculate error" begin
         elements_err = getElements(nodes, entities["Ω"], 10)
         prescribe!(elements_err, :E => E, :ν => ν, :h => h, :u => w, :φ₁ => φ₁, :φ₂ => φ₂)
@@ -275,15 +251,12 @@ if ENABLE_MANUFACTURED_ERROR
         global L₂_w = L₂(elements_err)
         global L₂_φ = L₂φ(elements_err)
     end
-end
+
 
 gmsh.finalize()
 
 println(to)
 println("α penalty: ", α)
-if ENABLE_MANUFACTURED_ERROR
+
     println("L₂ error of w: ", L₂_w)
     println("L₂ error of φ: ", L₂_φ)
-else
-    println("[info] Manufactured-solution L2 error is disabled (ENABLE_MANUFACTURED_ERROR=false).")
-end
