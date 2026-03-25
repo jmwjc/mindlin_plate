@@ -24,7 +24,7 @@ import Gmsh: gmsh
     Dˢ = 5/6*E*h/(2*(1+ν))
     
  
-# old manufactured solution (restore)
+
 # -----------------------------
 r = 1
 
@@ -63,14 +63,14 @@ Q₂₂(x, y, z) = Dˢ * (w₂₂(x, y, z) - φ₂₂(x, y, z))
 q(x, y, z) = -Q₁₁(x, y, z) - Q₂₂(x, y, z)
 m₁(x, y, z) = M₁₁₁(x, y, z) + M₁₂₂(x, y, z) - Q₁(x, y, z)
 m₂(x, y, z) = M₁₂₁(x, y, z) + M₂₂₂(x, y, z) - Q₂(x, y, z)
-
+# ---------------------------------------------------------------------------------------------------
 axis_r(x, y) = sqrt(x^2 + y^2)
 ξ(x, y) = axis_r(x, y) / R
 Mr(x, y, z) = fz * R^2 / 16 * (1 + ν) * (1 - ((3 + ν) / (1 + ν)) * ξ(x, y)^2)
 Mθ(x, y, z) = fz * R^2 / 16 * (1 + ν) * (1 - ((1 + 3ν) / (1 + ν)) * ξ(x, y)^2)
 Pi_int() = (fz^2 * R^6 * ν) / (384 * Dᵇ) * (1 + (4 * (h / R)^2) / (k_shear * (1 - ν)))
 Tr(x, y, z) = -fz * axis_r(x, y) / 2
-
+# ---------------------------------------------------------------------------------------------------
 
 
 # 自然
@@ -121,7 +121,7 @@ fᵠ = zeros(2 * nᵠ)
     @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
-println("after domain: ‖fʷ‖₂=", norm(fʷ), "  ‖fᵠ‖₂=", norm(fᵠ))
+# println("after domain: ‖fʷ‖₂=", norm(fʷ), "  ‖fᵠ‖₂=", norm(fᵠ))
 
 @timeit to "Γᵉ" begin
     elements = getElements(nodes, entities["Γᵉ"])
@@ -198,33 +198,33 @@ end
     @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
-println("after bnd: ‖fʷ‖₂=", norm(fʷ), "  ‖fᵠ‖₂=", norm(fᵠ))
+# println("after bnd: ‖fʷ‖₂=", norm(fʷ), "  ‖fᵠ‖₂=", norm(fᵠ))
 
 @timeit to "solve" d = [kᵠᵠ kᵠʷ; kᵠʷ' kʷʷ] \ [fᵠ; fʷ]
 
-println("check d norms: ‖d‖₂=", norm(d), "  ‖f‖₂=", norm([fᵠ; fʷ]))
-println("check rhs norms: ‖fʷ‖₂=", norm(fʷ), "  ‖fᵠ‖₂=", norm(fᵠ))
+# println("check d norms: ‖d‖₂=", norm(d), "  ‖f‖₂=", norm([fᵠ; fʷ]))
+# println("check rhs norms: ‖fʷ‖₂=", norm(fʷ), "  ‖fᵠ‖₂=", norm(fᵠ))
 
 push!(nodes, :d => d[2*nᵠ+1:end], :d₁ => d[1:2:2*nᵠ], :d₂ => d[2:2:2*nᵠ])
 
-println("check node fields:")
-println("  node1: d=", nodes[1].d, " d₁=", nodes[1].d₁, " d₂=", nodes[1].d₂)
-println("  node2: d=", nodes[2].d, " d₁=", nodes[2].d₁, " d₂=", nodes[2].d₂)
+# println("check node fields:")
+# println("  node1: d=", nodes[1].d, " d₁=", nodes[1].d₁, " d₂=", nodes[1].d₂)
+# println("  node2: d=", nodes[2].d, " d₁=", nodes[2].d₁, " d₂=", nodes[2].d₂)
 
 
-    @timeit to "calculate error" begin
-        elements_err = getElements(nodes, entities["Ω"], 10)
-        prescribe!(elements_err, :E => E, :ν => ν, :h => h, :u => w, :φ₁ => φ₁, :φ₂ => φ₂)
-        set𝝭!(elements_err)
-        global L₂_w = L₂(elements_err)
-        global L₂_φ = L₂φ(elements_err)
-    end
+@timeit to "calculate error" begin
+    elements_err = getElements(nodes, entities["Ω"], 10)
+    prescribe!(elements_err, :E => E, :ν => ν, :h => h, :u => w, :φ₁ => φ₁, :φ₂ => φ₂)
+    set𝝭!(elements_err)
+    global L₂_w = L₂(elements_err)
+    global L₂_φ = L₂φ(elements_err)
+end
 
 
 gmsh.finalize()
 
 println(to)
-println("α penalty: ", α)
 
-    println("L₂ error of w: ", L₂_w)
-    println("L₂ error of φ: ", L₂_φ)
+println("α penalty: ", α)
+println("L₂ error of w: ", L₂_w)
+println("L₂ error of φ: ", L₂_φ)
