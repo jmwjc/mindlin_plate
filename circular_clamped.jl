@@ -89,6 +89,8 @@ const to = TimerOutput()
 
 gmsh.initialize()
 @timeit to "open msh file" gmsh.open("./msh/circular.msh")
+# @timeit to "open msh file" gmsh.open("./msh/circular_tri3_9.msh")
+# @timeit to "open msh file" gmsh.open("./msh/circular_tri3_15.msh")
 @timeit to "get entities" entities = getPhysicalGroups()
 @timeit to "get nodes" nodes = get𝑿ᵢ()
 

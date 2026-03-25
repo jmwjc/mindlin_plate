@@ -1,3 +1,6 @@
 import BenchmarkExample: Circular
 
-Circular.generateMsh("msh/circular.msh", transfinite=3)
+for n in 3:15
+    Circular.generateMsh("msh/circular_tri3_$n.msh", transfinite=n, order=1, quad=false)
+# Circular.generateMsh("msh/circular_tri6_$n.msh", transfinite=n, order=2, quad=false)
+end
