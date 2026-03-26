@@ -12,9 +12,8 @@ import Gmsh: gmsh
 
     E = 10.92
     ν = 0.3
-    h = 1
+    h = 1.0
     R = 5.0
-    k = 5 / 6
     fz = 1.0
     α = 1e8 * E 
 
@@ -24,7 +23,7 @@ import Gmsh: gmsh
  
 
 # -----------------------------
-r = 1
+# r = 1
 
 # w(x, y, z) = fz * R^4 / (64 * Dᵇ) * (1 - ξ(x, y)^2) * ((1 - ξ(x, y)^2) + (8 * (h / R)^2) / (3 * k * (1 - ν)))
 
@@ -49,25 +48,24 @@ r = 1
 # # M₁₁(x, y, z) = -Dᵇ * (φ₁₁(x, y, z) + ν * φ₂₂(x, y, z))
 # # M₁₂(x, y, z) = -Dᵇ * (1 - ν) * 0.5 * (φ₁₂(x, y, z) + φ₂₁(x, y, z))
 # # M₂₂(x, y, z) = -Dᵇ * (ν * φ₁₁(x, y, z) + φ₂₂(x, y, z))
-M₁₁₁(x, y, z) = -Dᵇ * (φ₁₁₁(x, y, z) + ν * φ₂₂₁(x, y, z))
-M₁₂₂(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₂(x, y, z)
-M₁₂₁(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₁(x, y, z)
-M₂₂₂(x, y, z) = -Dᵇ * (ν * φ₁₁₂(x, y, z) + φ₂₂₂(x, y, z))
+# M₁₁₁(x, y, z) = -Dᵇ * (φ₁₁₁(x, y, z) + ν * φ₂₂₁(x, y, z))
+# M₁₂₂(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₂(x, y, z)
+# M₁₂₁(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₁(x, y, z)
+# M₂₂₂(x, y, z) = -Dᵇ * (ν * φ₁₁₂(x, y, z) + φ₂₂₂(x, y, z))
 
-Q₁(x, y, z) = Dˢ * (w₁(x, y, z) - φ₁(x, y, z))
-Q₂(x, y, z) = Dˢ * (w₂(x, y, z) - φ₂(x, y, z))
+# Q₁(x, y, z) = Dˢ * (w₁(x, y, z) - φ₁(x, y, z))
+# Q₂(x, y, z) = Dˢ * (w₂(x, y, z) - φ₂(x, y, z))
 # Q₁₁(x, y, z) = Dˢ * (w₁₁(x, y, z) - φ₁₁(x, y, z))
 # Q₂₂(x, y, z) = Dˢ * (w₂₂(x, y, z) - φ₂₂(x, y, z))
-q(x, y, z) = -Q₁₁(x, y, z) - Q₂₂(x, y, z)
-m₁(x, y, z) = M₁₁₁(x, y, z) + M₁₂₂(x, y, z) - Q₁(x, y, z)
-m₂(x, y, z) = M₁₂₁(x, y, z) + M₂₂₂(x, y, z) - Q₂(x, y, z)
+# q(x, y, z) = -Q₁₁(x, y, z) - Q₂₂(x, y, z)
+# m₁(x, y, z) = M₁₁₁(x, y, z) + M₁₂₂(x, y, z) - Q₁(x, y, z)
+# m₂(x, y, z) = M₁₂₁(x, y, z) + M₂₂₂(x, y, z) - Q₂(x, y, z)
 # # ---------------------------------------------------------------------------------------------------
-# axis_r(x, y) = sqrt(x^2 + y^2)
-# ξ(x, y) = axis_r(x, y) / R
-# Mr(x, y, z) = fz * R^2 / 16 * (1 + ν) * (1 - ((3 + ν) / (1 + ν)) * ξ(x, y)^2)
-# Mθ(x, y, z) = fz * R^2 / 16 * (1 + ν) * (1 - ((1 + 3ν) / (1 + ν)) * ξ(x, y)^2)
+ξ(x, y) = sqrt(x^2 + y^2) / R
+Mr(x, y, z) = fz * R^2 / 16 * (1 + ν) * (1 - ((3 + ν) / (1 + ν)) * ξ(x, y)^2)
+Mθ(x, y, z) = fz * R^2 / 16 * (1 + ν) * (1 - ((1 + 3ν) / (1 + ν)) * ξ(x, y)^2)
 # # Pi_int() = (fz^2 * R^6 * ν) / (384 * Dᵇ) * (1 + (4 * (h / R)^2) / (k * (1 - ν)))
-# # Tr(x, y, z) = -fz * axis_r(x, y) / 2
+Tr(x, y, z) = -fz * axis_r(x, y) / 2
 # ---------------------------------------------------------------------------------------------------
 
 
@@ -103,7 +101,7 @@ fᵠ = zeros(2 * nᵠ)
 
 @timeit to "assemble domain" begin
     elements = getElements(nodes, entities["Ω"])
-    prescribe!(elements, :E => E, :ν => ν, :h => h, :q => q, :m₁ => m₁, :m₂ => m₂)
+    prescribe!(elements, :E => E, :ν => ν, :h => h, :q => fz)
     set∇𝝭!(elements)
 
     𝑎ʷʷ = ∫wwdΩ => elements
@@ -113,12 +111,12 @@ fᵠ = zeros(2 * nᵠ)
         ∫κκdΩ => elements,
     ]
     𝑓ʷ = ∫wqdΩ => elements
-    𝑓ᵠ = ∫φmdΩ => elements
+    # 𝑓ᵠ = ∫φmdΩ => elements
     @timeit to "assemble" 𝑎ʷʷ(kʷʷ)
     @timeit to "assemble" 𝑎ᵠʷ(kᵠʷ)
     @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
     @timeit to "assemble" 𝑓ʷ(fʷ)
-    @timeit to "assemble" 𝑓ᵠ(fᵠ)
+    # @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
 # println("after domain: ‖fʷ‖₂=", norm(fʷ), "  ‖fᵠ‖₂=", norm(fᵠ))
@@ -154,7 +152,7 @@ end
         :n₁₁ => 1.0,
         :n₁₂ => 0.0,
         :n₂₂ => 0.0,
-        :V => (x,y,z,n₁,n₂)->Q₁(x,y,z)*n₁ + Q₂(x,y,z)*n₂,
+        # :V => (x,y,z,n₁,n₂)->Q₁(x,y,z)*n₁ + Q₂(x,y,z)*n₂,
         :M₁ => 0.0,
         :M₂ => (x,y,z,n₁,n₂)->Mθ(x, y, z)*n₁ + Mr(x, y, z)*n₂,
 
@@ -162,7 +160,7 @@ end
     )
     𝑎ʷ = ∫αwwdΓ => elements
     𝑎ᵠ = ∫αφφdΓ => elements
-    𝑓ʷ = ∫wVdΓ => elements
+    # 𝑓ʷ = ∫wVdΓ => elements
     𝑓ᵠ = ∫φMdΓ => elements
     # @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
     @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
@@ -182,7 +180,7 @@ end
         :n₁₁ => 0.0,
         :n₁₂ => 0.0,
         :n₂₂ => 1.0,
-        :V => (x,y,z,n₁,n₂)->Q₁(x,y,z)*n₁ + Q₂(x,y,z)*n₂,
+        # :V => (x,y,z,n₁,n₂)->Q₁(x,y,z)*n₁ + Q₂(x,y,z)*n₂,
         :M₁ => (x,y,z,n₁,n₂)->Mr(x, y, z)*n₁ + Mθ(x, y, z)*n₂,
         :M₂ => 0.0,
 
@@ -194,7 +192,7 @@ end
     𝑓ᵠ = ∫φMdΓ => elements
     # @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
     @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
-    @timeit to "assemble" 𝑓ʷ(fʷ)
+    # @timeit to "assemble" 𝑓ʷ(fʷ)
     @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
