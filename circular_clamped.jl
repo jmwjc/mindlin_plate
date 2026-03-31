@@ -1,7 +1,7 @@
 using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements
 import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫wwdΩ, ∫φφdΩ, ∫φwdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, L₂, L₂φ, ∫wVdΓ, ∫φMdΓ
-
+using WriteVTK
 using LinearAlgebra
 using TimerOutputs
 import Gmsh: gmsh
@@ -16,18 +16,14 @@ import Gmsh: gmsh
     R = 5.0
     fz = 1.0
     α = 1e8 * E 
-
     Dᵇ = E*h^3/12/(1-ν^2)
     Dˢ = 5/6*E*h/(2*(1+ν))
     
  
 
-# -----------------------------
+# 制造解-----------------------------
 # r = 1
-
-# w(x, y, z) = fz * R^4 / (64 * Dᵇ) * (1 - ξ(x, y)^2) * ((1 - ξ(x, y)^2) + (8 * (h / R)^2) / (3 * k * (1 - ν)))
-
-# # w(x, y, z) = (x + y)^r
+# w(x, y, z) = (x + y)^r
 # w₁(x, y, z) = r * (x + y)^abs(r - 1)
 # w₂(x, y, z) = r * (x + y)^abs(r - 1)
 # w₁₁(x, y, z) = r * (r - 1) * (x + y)^abs(r - 2)
@@ -45,9 +41,9 @@ import Gmsh: gmsh
 # φ₁₂₁(x, y, z) = r * (r - 1) * (r - 2) * (x + y)^abs(r - 3)
 # φ₁₂₂(x, y, z) = r * (r - 1) * (r - 2) * (x + y)^abs(r - 3)
 
-# # M₁₁(x, y, z) = -Dᵇ * (φ₁₁(x, y, z) + ν * φ₂₂(x, y, z))
-# # M₁₂(x, y, z) = -Dᵇ * (1 - ν) * 0.5 * (φ₁₂(x, y, z) + φ₂₁(x, y, z))
-# # M₂₂(x, y, z) = -Dᵇ * (ν * φ₁₁(x, y, z) + φ₂₂(x, y, z))
+# M₁₁(x, y, z) = -Dᵇ * (φ₁₁(x, y, z) + ν * φ₂₂(x, y, z))
+# M₁₂(x, y, z) = -Dᵇ * (1 - ν) * 0.5 * (φ₁₂(x, y, z) + φ₂₁(x, y, z))
+# M₂₂(x, y, z) = -Dᵇ * (ν * φ₁₁(x, y, z) + φ₂₂(x, y, z))
 # M₁₁₁(x, y, z) = -Dᵇ * (φ₁₁₁(x, y, z) + ν * φ₂₂₁(x, y, z))
 # M₁₂₂(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₂(x, y, z)
 # M₁₂₁(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₁(x, y, z)
@@ -60,13 +56,39 @@ import Gmsh: gmsh
 # q(x, y, z) = -Q₁₁(x, y, z) - Q₂₂(x, y, z)
 # m₁(x, y, z) = M₁₁₁(x, y, z) + M₁₂₂(x, y, z) - Q₁(x, y, z)
 # m₂(x, y, z) = M₁₂₁(x, y, z) + M₂₂₂(x, y, z) - Q₂(x, y, z)
-# # ---------------------------------------------------------------------------------------------------
+
+# 解析解------------------------------------------------------------------------------
+
+#  ξ(x, y) = sqrt(x^2 + y^2) / R
+# w(x, y, z) = fz * R^4 / (64 * Dᵇ) * (1 - ξ(x, y)^2) * ((1 - ξ(x, y)^2) + (8 * (h / R)^2) / (3 * k * (1 - ν)))
+# Mr(x, y, z) = fz * R^2 / 16 * (1 + ν) * (1 - ((3 + ν) / (1 + ν)) * ξ(x, y)^2)
+# Mθ(x, y, z) = fz * R^2 / 16 * (1 + ν) * (1 - ((1 + 3ν) / (1 + ν)) * ξ(x, y)^2)
+# Pi_int() = (fz^2 * R^6 * ν) / (384 * Dᵇ) * (1 + (4 * (h / R)^2) / (k * (1 - ν)))
+# Tr(x, y, z) = -fz * sqrt(x^2 + y^2) / 2
+
+# 补充解析解------------------------------------------------------------------------------
+
 ξ(x, y) = sqrt(x^2 + y^2) / R
-Mr(x, y, z) = fz * R^2 / 16 * (1 + ν) * (1 - ((3 + ν) / (1 + ν)) * ξ(x, y)^2)
-Mθ(x, y, z) = fz * R^2 / 16 * (1 + ν) * (1 - ((1 + 3ν) / (1 + ν)) * ξ(x, y)^2)
-# # Pi_int() = (fz^2 * R^6 * ν) / (384 * Dᵇ) * (1 + (4 * (h / R)^2) / (k * (1 - ν)))
-Tr(x, y, z) = -fz * axis_r(x, y) / 2
-# ---------------------------------------------------------------------------------------------------
+
+w(x, y, z) = fz * R^4 / (64 * Dᵇ) * (1 - ξ(x, y)^2) * ((1 - ξ(x, y)^2) + 8 * (h / R)^2 / (3 * (5/6) * (1 - ν)))
+
+
+φ_r(x, y, z) = fz * sqrt(x^2 + y^2) * ((x^2 + y^2) - R^2) / (16 * Dᵇ)
+
+
+κ_rr(x, y, z) = -fz * R^2 * (3 * ξ(x, y)^2 - 1) / (16 * Dᵇ)
+κ_θθ(x, y, z) = -fz * R^2 * (ξ(x, y)^2 - 1) / (16 * Dᵇ)
+
+
+γ_r(x, y, z) = -fz * sqrt(x^2 + y^2) / Dˢ
+
+
+M_rr(x, y, z) = -fz * R^2 / 16 * ((3 + ν) * ξ(x, y)^2 - (1 + ν))
+M_θθ(x, y, z) = -fz * R^2 / 16 * ((1 + 3ν) * ξ(x, y)^2 - (1 + ν))
+
+
+Q_r(x, y, z) = -fz * sqrt(x^2 + y^2) / 2
+# --------------------------------------------------------------------------------
 
 
 # 自然
@@ -82,7 +104,7 @@ Tr(x, y, z) = -fz * axis_r(x, y) / 2
 
 
 const to = TimerOutput()
-
+ndiv=4
 gmsh.initialize()
 @timeit to "open msh file" gmsh.open("./msh/circular.msh")
 # @timeit to "open msh file" gmsh.open("./msh/circular_tri3_9.msh")
@@ -128,8 +150,8 @@ end
     prescribe!(elements, 
         :α => α,
         :g => w,
-        :g₁ => φ₁,
-        :g₂ => φ₂,
+        :g₁ => 0,
+        :g₂ => 0,
         :n₁₁ => 1.0,
         :n₁₂ => 0.0,
         :n₂₂ => 1.0
@@ -147,14 +169,14 @@ end
     prescribe!(elements, 
         :α => α,
         :g => w,
-        :g₁ => φ₁,
-        :g₂ => φ₂,
+        :g₁ => 0,
+        :g₂ => 0,
         :n₁₁ => 1.0,
         :n₁₂ => 0.0,
         :n₂₂ => 0.0,
         # :V => (x,y,z,n₁,n₂)->Q₁(x,y,z)*n₁ + Q₂(x,y,z)*n₂,
         :M₁ => 0.0,
-        :M₂ => (x,y,z,n₁,n₂)->Mθ(x, y, z)*n₁ + Mr(x, y, z)*n₂,
+        :M₂ => (x,y,z,n₁,n₂)->M_rr(x, y, z)*n₁ + M_θθ(x, y, z)*n₂,
 
 
     )
@@ -175,20 +197,20 @@ end
     prescribe!(elements, 
         :α => α,
         :g => w,
-        :g₁ => φ₁,
-        :g₂ => φ₂,
+        :g₁ => 0,
+        :g₂ => 0,
         :n₁₁ => 0.0,
         :n₁₂ => 0.0,
         :n₂₂ => 1.0,
         # :V => (x,y,z,n₁,n₂)->Q₁(x,y,z)*n₁ + Q₂(x,y,z)*n₂,
-        :M₁ => (x,y,z,n₁,n₂)->Mr(x, y, z)*n₁ + Mθ(x, y, z)*n₂,
+        :M₁ => (x,y,z,n₁,n₂)->M_rr(x, y, z)*n₁ + M_θθ(x, y, z)*n₂,
         :M₂ => 0.0,
 
 
     )
     𝑎ʷ = ∫αwwdΓ => elements
     𝑎ᵠ = ∫αφφdΓ => elements
-    𝑓ʷ = ∫wVdΓ => elements
+    # 𝑓ʷ = ∫wVdΓ => elements
     𝑓ᵠ = ∫φMdΓ => elements
     # @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
     @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
@@ -226,3 +248,48 @@ println(to)
 println("α penalty: ", α)
 println("L₂ error of w: ", L₂_w)
 println("L₂ error of φ: ", L₂_φ)
+
+# 图--------------------------------------------------------------------------------
+
+# 坐标------------------------------------------------------------------------------
+nₚ = length(nodes)
+points = zeros(3,nₚ)
+for (i,node) in enumerate(nodes)
+    points[1,i] = node.x
+    points[2,i] = node.y
+    points[3,i] = node.d*4
+    # points[3,i] = us[i]*4
+end
+
+# 二维------------------------------------------------------------------------------
+# cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE_STRIP,[x.𝐼 for x in elm.𝓒]) for elm in elements["Ω"]]
+# # vtk_grid("./vtk/hmd_2d/error/non_uniform_Tri3_"*string(ndiv)*".vtu",points,cells) do vtk
+# vtk_grid("./vtk/hmd_2d/Tri3_d_"*string(ndiv)*".vtu",points,cells) do vtk
+#     vtk["d"] = [node.d for node in nodes]
+#     # vtk["精确解"] = us
+# end
+
+# fₓ,fₜ,fₓₓ,fₜₜ = truncation_error(elements["Ω"],nₚ)
+# println(fₓ)
+# println(fₜ)
+# println(fₛ)
+
+# 三维------------------------------------------------------------------------------
+xs = [node.x for node in nodes]'
+ys = [node.y for node in nodes]'
+zs = [node.z for node in nodes]'
+points = [xs; ys; zs]
+# cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE_STRIP, [xᵢ.𝐼 for xᵢ in elm.𝓒]) for elm in elements["Ω"]]
+# vtk_grid("./vtk/circular_tri3_"*string(ndiv), points, cells) do vtk
+cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE_STRIP, [xᵢ.𝐼 for xᵢ in elm.𝓒]) for elm in elements]
+vtk_grid("./vtk/circular_tri3_"*string(ndiv), points, cells) do vtk
+
+    # vtk["fₓ"] = fₓ
+    # vtk["fₜ"] = fₜ
+    # vtk["fₓₓ"] = fₓₓ
+    # vtk["fₜₜ"] = fₜₜ
+    # vtk["fₓₓ/fₜₜ"] = fₓₓ./fₜₜ
+    # vtk["误差"] = es
+    vtk["误差_w"] = L₂_w
+    vtk["误差_φ"] = L₂_φ
+end
