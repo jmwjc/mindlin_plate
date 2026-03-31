@@ -150,6 +150,7 @@ end
     prescribe!(elements, 
         :α => α,
         :g => w,
+        :k => κ_rr,
         :g₁ => 0,
         :g₂ => 0,
         :n₁₁ => 1.0,
@@ -158,8 +159,10 @@ end
     )
     𝑎ʷ = ∫αwwdΓ => elements
     𝑎ᵠ = ∫αφφdΓ => elements
+    𝑎ᵏ = ∫ακκdΓ => elements
     @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
     @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
+    @timeit to "assemble" 𝑎ᵏ(kᵠᵠ,fᵠ)
 end
 
 @timeit to "Γˡ" begin
