@@ -12,7 +12,7 @@ import Gmsh: gmsh
 
     E = 10.92
     ν = 0.3
-    h = 1.0
+    h = 1e0
     R = 5.0
     fz = 1.0
     α = 1e8 * E 
@@ -68,26 +68,25 @@ import Gmsh: gmsh
 
 # 补充解析解------------------------------------------------------------------------------
 
-ξ(x, y) = sqrt(x^2 + y^2) / R
+r(x, y) = sqrt(x^2 + y^2)
+ξ(x, y) = r(x, y) / R
 
 w(x, y, z) = fz * R^4 / (64 * Dᵇ) * (1 - ξ(x, y)^2) * ((1 - ξ(x, y)^2) + 8 * h^2 / (3 * (5/6) * R^2 * (1 - ν)))
 
 
-φ_r(x, y, z) = fz^3 * sqrt(x^2 + y^2) * ((sqrt(x^2 + y^2) / R)^2 - 1) / (16 * Dᵇ)
+φᵣ(x, y, z) = fz * r(x, y) * (r(x, y)^2 - R^2) / (16 * Dᵇ)
+φ₁(x,y,z) = φᵣ(x,y,z)*x/r(x,y)
+φ₂(x,y,z) = φᵣ(x,y,z)*y/r(x,y)
 
+κᵣᵣ(x, y, z) = -fz * R^2 * (3 * ξ(x, y)^2 - 1) / (16 * Dᵇ)
+κᵩᵩ(x, y, z) = -fz * R^2 * (ξ(x, y)^2 - 1) / (16 * Dᵇ)
 
-κ_rr(x, y, z) = -fz * R^2 * (3 * ξ(x, y)^2 - 1) / (16 * Dᵇ)
-κ_θθ(x, y, z) = -fz * R^2 * (ξ(x, y)^2 - 1) / (16 * Dᵇ)
+γᵣ(x, y, z) = -fz * r(x, y) / Dˢ
 
+Mᵣᵣ(x, y, z) = -fz * R^2 / 16 * ((3 + ν) * ξ(x, y)^2 - (1 + ν))
+Mᵩᵩ(x, y, z) = -fz * R^2 / 16 * ((1 + 3ν) * ξ(x, y)^2 - (1 + ν))
 
-γ_r(x, y, z) = -fz * sqrt(x^2 + y^2) / Dˢ
-
-
-M_rr(x, y, z) = -fz * R^2 / 16 * ((3 + ν) * ξ(x, y)^2 - (1 + ν))
-M_θθ(x, y, z) = -fz * R^2 / 16 * ((1 + 3ν) * ξ(x, y)^2 - (1 + ν))
-
-
-Q_r(x, y, z) = -fz * sqrt(x^2 + y^2) / 2
+Qᵣ(x, y, z) = -fz * r(x, y) / 2
 # --------------------------------------------------------------------------------
 
 
@@ -150,8 +149,8 @@ end
     prescribe!(elements, 
         :α => α,
         :g => w,
-        :g₁ => 0,
-        :g₂ => 0,
+        :g₁ => φ₁,
+        :g₂ => φ₂,
         :n₁₁ => 1.0,
         :n₁₂ => 0.0,
         :n₂₂ => 1.0
@@ -169,26 +168,14 @@ end
 
     prescribe!(elements, 
         :α => α,
-        :g => w,
-        :g₁ => 0,
-        :g₂ => 0,
+        :g₁ => φ₁,
+        :g₂ => φ₂,
         :n₁₁ => 1.0,
         :n₁₂ => 0.0,
         :n₂₂ => 0.0,
-        # :V => (x,y,z,n₁,n₂)->Q₁(x,y,z)*n₁ + Q₂(x,y,z)*n₂,
-        :M₁ => 0.0,
-        :M₂ => (x,y,z,n₁,n₂)->M_rr(x, y, z)*n₁ + M_θθ(x, y, z)*n₂,
-
-
     )
-    𝑎ʷ = ∫αwwdΓ => elements
     𝑎ᵠ = ∫αφφdΓ => elements
-    # 𝑓ʷ = ∫wVdΓ => elements
-    𝑓ᵠ = ∫φMdΓ => elements
-    # @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
     @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
-    @timeit to "assemble" 𝑓ʷ(fʷ)
-    @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
 @timeit to "Γᵇ" begin
@@ -197,26 +184,14 @@ end
 
     prescribe!(elements, 
         :α => α,
-        :g => w,
-        :g₁ => 0,
-        :g₂ => 0,
+        :g₁ => φ₁,
+        :g₂ => φ₂,
         :n₁₁ => 0.0,
         :n₁₂ => 0.0,
         :n₂₂ => 1.0,
-        # :V => (x,y,z,n₁,n₂)->Q₁(x,y,z)*n₁ + Q₂(x,y,z)*n₂,
-        :M₁ => (x,y,z,n₁,n₂)->M_rr(x, y, z)*n₁ + M_θθ(x, y, z)*n₂,
-        :M₂ => 0.0,
-
-
     )
-    𝑎ʷ = ∫αwwdΓ => elements
     𝑎ᵠ = ∫αφφdΓ => elements
-    # 𝑓ʷ = ∫wVdΓ => elements
-    𝑓ᵠ = ∫φMdΓ => elements
-    # @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
     @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
-    # @timeit to "assemble" 𝑓ʷ(fʷ)
-    @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
 # println("after bnd: ‖fʷ‖₂=", norm(fʷ), "  ‖fᵠ‖₂=", norm(fᵠ))
