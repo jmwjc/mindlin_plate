@@ -1,6 +1,6 @@
 using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements
-import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫wwdΩ, ∫φφdΩ, ∫φwdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, L₂, L₂φ, ∫wVdΓ, ∫φMdΓ
+import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫wwdΩ, ∫φφdΩ, ∫φwdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, L₂, L₂φ, L₂Q, ∫wVdΓ, ∫φMdΓ, ∫QφdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ
 using WriteVTK
 using LinearAlgebra
 using TimerOutputs
@@ -21,70 +21,55 @@ import Gmsh: gmsh
     
  
 
-# 制造解-----------------------------
-# r = 1
-# w(x, y, z) = (x + y)^r
-# w₁(x, y, z) = r * (x + y)^abs(r - 1)
-# w₂(x, y, z) = r * (x + y)^abs(r - 1)
-# w₁₁(x, y, z) = r * (r - 1) * (x + y)^abs(r - 2)
-# w₂₂(x, y, z) = r * (r - 1) * (x + y)^abs(r - 2)
-# φ₁(x, y, z) = r * (x + y)^abs(r - 1)
-# φ₂(x, y, z) = r * (x + y)^abs(r - 1)
-# φ₁₁(x, y, z) = r * (r - 1) * (x + y)^abs(r - 2)
-# φ₁₂(x, y, z) = r * (r - 1) * (x + y)^abs(r - 2)
-# φ₂₁(x, y, z) = r * (r - 1) * (x + y)^abs(r - 2)
-# φ₂₂(x, y, z) = r * (r - 1) * (x + y)^abs(r - 2)
-# φ₁₁₁(x, y, z) = r * (r - 1) * (r - 2) * (x + y)^abs(r - 3)
-# φ₁₁₂(x, y, z) = r * (r - 1) * (r - 2) * (x + y)^abs(r - 3)
-# φ₂₂₁(x, y, z) = r * (r - 1) * (r - 2) * (x + y)^abs(r - 3)
-# φ₂₂₂(x, y, z) = r * (r - 1) * (r - 2) * (x + y)^abs(r - 3)
-# φ₁₂₁(x, y, z) = r * (r - 1) * (r - 2) * (x + y)^abs(r - 3)
-# φ₁₂₂(x, y, z) = r * (r - 1) * (r - 2) * (x + y)^abs(r - 3)
 
-# M₁₁(x, y, z) = -Dᵇ * (φ₁₁(x, y, z) + ν * φ₂₂(x, y, z))
-# M₁₂(x, y, z) = -Dᵇ * (1 - ν) * 0.5 * (φ₁₂(x, y, z) + φ₂₁(x, y, z))
-# M₂₂(x, y, z) = -Dᵇ * (ν * φ₁₁(x, y, z) + φ₂₂(x, y, z))
-# M₁₁₁(x, y, z) = -Dᵇ * (φ₁₁₁(x, y, z) + ν * φ₂₂₁(x, y, z))
-# M₁₂₂(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₂(x, y, z)
-# M₁₂₁(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₁(x, y, z)
-# M₂₂₂(x, y, z) = -Dᵇ * (ν * φ₁₁₂(x, y, z) + φ₂₂₂(x, y, z))
-
-# Q₁(x, y, z) = Dˢ * (w₁(x, y, z) - φ₁(x, y, z))
-# Q₂(x, y, z) = Dˢ * (w₂(x, y, z) - φ₂(x, y, z))
-# Q₁₁(x, y, z) = Dˢ * (w₁₁(x, y, z) - φ₁₁(x, y, z))
-# Q₂₂(x, y, z) = Dˢ * (w₂₂(x, y, z) - φ₂₂(x, y, z))
-# q(x, y, z) = -Q₁₁(x, y, z) - Q₂₂(x, y, z)
-# m₁(x, y, z) = M₁₁₁(x, y, z) + M₁₂₂(x, y, z) - Q₁(x, y, z)
-# m₂(x, y, z) = M₁₂₁(x, y, z) + M₂₂₂(x, y, z) - Q₂(x, y, z)
 
 # 解析解------------------------------------------------------------------------------
 
-#  ξ(x, y) = sqrt(x^2 + y^2) / R
-# w(x, y, z) = fz * R^4 / (64 * Dᵇ) * (1 - ξ(x, y)^2) * ((1 - ξ(x, y)^2) + (8 * (h / R)^2) / (3 * k * (1 - ν)))
-# Mr(x, y, z) = fz * R^2 / 16 * (1 + ν) * (1 - ((3 + ν) / (1 + ν)) * ξ(x, y)^2)
-# Mθ(x, y, z) = fz * R^2 / 16 * (1 + ν) * (1 - ((1 + 3ν) / (1 + ν)) * ξ(x, y)^2)
-# Pi_int() = (fz^2 * R^6 * ν) / (384 * Dᵇ) * (1 + (4 * (h / R)^2) / (k * (1 - ν)))
-# Tr(x, y, z) = -fz * sqrt(x^2 + y^2) / 2
-
-# 补充解析解------------------------------------------------------------------------------
-
 r(x, y) = sqrt(x^2 + y^2)
 ξ(x, y) = r(x, y) / R
+cosθ(x, y) = x/r(x,y)
+sinθ(x, y) = y/r(x,y)
 
-w(x, y, z) = fz * R^4 / (64 * Dᵇ) * (1 - ξ(x, y)^2) * ((5 + ν) / (1 + ν) - ξ(x, y)^2 + 8 * h^2 / (3 * (5/6) * R^2 * (1 - ν)))
+w(x, y, z) = fz * R^4 / (64 * Dᵇ) * (1 - ξ(x, y)^2) * ((1 - ξ(x, y)^2) + 8 * h^2 / (3 * (5/6) * R^2 * (1 - ν)))
 
-φᵣ(x, y, z) = fz * r(x, y) / (16 * Dᵇ) * (r(x, y)^2 - (3 + ν) / (1 + ν) * R^2)
+
+φᵣ(x, y, z) = fz * r(x, y) * (r(x, y)^2 - R^2) / (16 * Dᵇ)
 φ₁(x,y,z) = φᵣ(x,y,z)*x/r(x,y)
 φ₂(x,y,z) = φᵣ(x,y,z)*y/r(x,y)
+φ₁₁(x,y,z) = φᵣ(x,y,z)*cos²θ - φᵣ(x,y,z)*sin²θ
+φ₁₂(x,y,z) = φᵣ(x,y,z)*sinθ*cosθ
+φ₂₂(x,y,z) = φᵣ(x,y,z)*sin²θ - φᵣ(x,y,z)*cos²θ
+φ₁₁₁(x,y,z) = φᵣ(x,y,z)*cos³θ - 3*φᵣ(x,y,z)*sin²θ*cosθ
+φ₁₁₂(x,y,z) = φᵣ(x,y,z)*sinθ*cos²θ - φᵣ(x,y,z)*sin³θ
+φ₂₂₁(x,y,z) = φᵣ(x,y,z)*sin²θ*cosθ - φᵣ(x,y,z)*cos³θ
+φ₂₂₂(x,y,z) = φᵣ(x,y,z)*sin³θ - 3*φᵣ(x,y,z)*sinθ*cos²θ
+φ₁₂₁(x,y,z) = φᵣ(x,y,z)*sin²θ*cosθ + φᵣ(x,y,z)*cos³θ
+φ₁₂₂(x,y,z) = φᵣ(x,y,z)*sin³θ + φᵣ(x,y,z)*sinθ*cos²θ
 
-κᵣᵣ(x, y, z) = -fz * R^2 * (3 * ξ(x, y)^2 - (3 + ν)) / (16 * (1 + ν) * Dᵇ)
-κᵩᵩ(x, y, z) = -fz * R^2 * ((3 + ν) - (1 + ν) * ξ(x, y)^2) / (16 * (1 + ν) * Dᵇ)
+κᵣᵣ(x, y, z) = -fz * R^2 * (3 * ξ(x, y)^2 - 1) / (16 * Dᵇ)
+κᵩᵩ(x, y, z) = -fz * R^2 * (ξ(x, y)^2 - 1) / (16 * Dᵇ)
+
 γᵣ(x, y, z) = -fz * r(x, y) / Dˢ
 
-Mᵣᵣ(x, y, z) = fz * R^2 * (3 + ν) / 16 * (1 - ξ(x, y)^2)
-Mᵩᵩ(x, y, z) = fz * R^2 / 16 * ((3 + ν) -(1 + 3ν) * ξ(x, y)^2)
+Mᵣᵣ(x, y, z) = -fz * R^2 / 16 * ((3 + ν) * ξ(x, y)^2 - (1 + ν))
+Mᵩᵩ(x, y, z) = -fz * R^2 / 16 * ((1 + 3ν) * ξ(x, y)^2 - (1 + ν))
+
+M₁₁(x,y,z) = Mᵣᵣ(x,y,z) * cos²θ + Mᵩᵩ(x,y,z) * sin²θ
+M₂₂(x,y,z) = Mᵣᵣ(x,y,z) * sin²θ + Mᵩᵩ(x,y,z) * cos²θ
+M₁₂(x,y,z) = (Mᵣᵣ(x,y,z) - Mᵩᵩ(x,y,z)) * sinθ * cosθ
+M₁₁₁(x,y,z) = fz * x * (1 - ν) / 2 * (1 - ξ(x,y)^2)
+M₁₂₂(x,y,z) = fz * x * y * (1 - ν) / (2 * R^2) * ξ(x,y)
+M₁₂₁(x,y,z) = fz * x * y * (1 - ν) / (2 * R^2) * ξ(x,y)
+M₂₂₂(x,y,z) = fz * y * (1 - ν) / 2 * (1 - ξ(x,y)^2)
+m₁(x,y,z) = M₁₁₁(x,y,z) + M₁₂₂(x,y,z) - Q₁(x,y,z)
+m₂(x,y,z) = M₁₂₁(x,y,z) + M₂₂₂(x,y,z) - Q₂(x,y,z)
 
 Qᵣ(x, y, z) = -fz * r(x, y) / 2
+Q₁(x, y, z) = -fz * x / 2
+Q₂(x, y, z) = -fz * y / 2
+Q₁₁(x,y,z) = -fz / 2  
+Q₂₂(x,y,z) = -fz / 2  
+
 # --------------------------------------------------------------------------------
 
 
@@ -111,39 +96,66 @@ gmsh.initialize()
 
 nʷ = length(nodes)
 nᵠ = length(nodes)
-nᵐ = length(nodes)
+nᵛ = length(nodes)
+
 kʷʷ = zeros(nʷ, nʷ)
 kᵠᵠ = zeros(2 * nᵠ, 2 * nᵠ)
+kᵛᵛ = zeros(2*nᵛ,2*nᵛ)
 kᵠʷ = zeros(2 * nᵠ, nʷ)
+kᵛʷ = zeros(2*nᵛ,nʷ)
+kᵛᵠ = zeros(2*nᵛ,2*nᵠ)
+
 fʷ = zeros(nʷ)
 fᵠ = zeros(2 * nᵠ)
-fᵐ = zeros(2 * nᵐ)
-@timeit to "assemble domain" begin
-    elements = getElements(nodes, entities["Ω"])
-    prescribe!(elements, :E => E, :ν => ν, :h => h, :q => fz, )
-    set∇𝝭!(elements)
+fᵛ = zeros(2*nᵛ)
 
-    𝑎ʷʷ = ∫wwdΩ => elements
-    𝑎ᵠʷ = ∫φwdΩ => elements
-    𝑎ᵠᵠ = [
-        ∫φφdΩ => elements,
-        ∫κκdΩ => elements,
+integrationOrder = 3 
+@timeit to "assemble domain" begin
+    elements = getElements(nodes, entities["Ω"], integrationOrder)
+    elements_Γᵇ = getElements(nodes, entities["Γᵇ"], integrationOrder, normal=true)
+    elements_Γᵉ = getElements(nodes, entities["Γᵉ"], integrationOrder, normal=true)
+    elements_Γˡ = getElements(nodes, entities["Γˡ"], integrationOrder, normal=true)
+    elements_Γ = elements_Γᵇ ∪ elements_Γᵉ ∪ elements_Γˡ
+    prescribe!(elements, :E => E, :ν => ν, :h => h, :q => fz)
+    set∇𝝭!(elements)
+     set𝝭!(elements_Γᵇ)
+    set𝝭!(elements_Γᵉ)
+    set𝝭!(elements_Γˡ)
+
+    # 𝑎ʷʷ = ∫wwdΩ => elements
+    # 𝑎ᵠʷ = ∫φwdΩ => elements
+    # 𝑎ᵠᵠ = [
+    #     ∫φφdΩ => elements,
+    #     ∫κκdΩ => elements,
+    # ]
+    # 𝑓ʷ = ∫wqdΩ => elements
+    # # 𝑓ᵠ = ∫φmdΩ => elements
+    # @timeit to "assemble" 𝑎ʷʷ(kʷʷ)
+    # @timeit to "assemble" 𝑎ᵠʷ(kᵠʷ)
+    # @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
+    # @timeit to "assemble" 𝑓ʷ(fʷ)
+    # # @timeit to "assemble" 𝑓ᵠ(fᵠ)
+
+    𝑎ᵠᵠ = ∫κκdΩ=>elements
+    𝑎ᵛᵠ = ∫QφdΩ=>(elements, elements)
+    𝑎ᵛᵛ = ∫QQdΩ=>elements
+    𝑎ᵛʷ = [
+        ∫∇QwdΩ=>(elements, elements),
+        ∫QwdΓ=>(elements_Γ, elements_Γ),
     ]
     𝑓ʷ = ∫wqdΩ => elements
-    # 𝑓ᵠ = ∫φmdΩ => elements
-    @timeit to "assemble" 𝑎ʷʷ(kʷʷ)
-    @timeit to "assemble" 𝑎ᵠʷ(kᵠʷ)
+
     @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
+    @timeit to "assemble" 𝑎ᵛᵠ(kᵛᵠ)
+    @timeit to "assemble" 𝑎ᵛᵛ(kᵛᵛ)
+    @timeit to "assemble" 𝑎ᵛʷ(kᵛʷ)
     @timeit to "assemble" 𝑓ʷ(fʷ)
-    # @timeit to "assemble" 𝑓ᵠ(fᵠ)
 
     global elements_domain = elements 
 
 end
 
 
-
-# println("after domain: ‖fʷ‖₂=", norm(fʷ), "  ‖fᵠ‖₂=", norm(fᵠ))
 
 @timeit to "Γᵉ" begin
     elements = getElements(nodes, entities["Γᵉ"])
@@ -154,18 +166,15 @@ end
         :g => w,
         :g₁ => φ₁,
         :g₂ => φ₂,
-        :m₁ => Mᵣᵣ, 
-        :m₂ => Mᵩᵩ,
         :n₁₁ => 1.0,
         :n₁₂ => 0.0,
         :n₂₂ => 1.0,
     )
     𝑎ʷ = ∫αwwdΓ => elements
     𝑎ᵠ = ∫αφφdΓ => elements
-    𝑓ᵐ = ∫φmdΩ => elements
     @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
     @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
-    @timeit to "assemble" 𝑓ᵐ(fᵐ)
+ 
 end
 
 @timeit to "Γˡ" begin
@@ -200,26 +209,25 @@ end
     @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
 end
 
-# println("after bnd: ‖fʷ‖₂=", norm(fʷ), "  ‖fᵠ‖₂=", norm(fᵠ))
 
-@timeit to "solve" d = [kᵠᵠ kᵠʷ; kᵠʷ' kʷʷ] \ [fᵠ; fʷ]
 
-# println("check d norms: ‖d‖₂=", norm(d), "  ‖f‖₂=", norm([fᵠ; fʷ]))
-# println("check rhs norms: ‖fʷ‖₂=", norm(fʷ), "  ‖fᵠ‖₂=", norm(fᵠ))
+@timeit to "solve" d = [kᵠᵠ kᵠʷ kᵛᵠ'; kᵠʷ' kʷʷ kᵛʷ'; kᵛᵠ kᵛʷ kᵛᵛ] \ [fᵠ; fʷ; fᵛ]
 
-push!(nodes, :d => d[2*nᵠ+1:end], :d₁ => d[1:2:2*nᵠ], :d₂ => d[2:2:2*nᵠ])
-
-# println("check node fields:")
-# println("  node1: d=", nodes[1].d, " d₁=", nodes[1].d₁, " d₂=", nodes[1].d₂)
-# println("  node2: d=", nodes[2].d, " d₁=", nodes[2].d₁, " d₂=", nodes[2].d₂)
-
+push!(nodes, 
+    :d => d[2*nᵠ+1:2*nᵠ+nʷ],       # w
+    :d₁ => d[1:2:2*nᵠ],            # φ₁
+    :d₂ => d[2:2:2*nᵠ],            # φ₂
+    :q₁ => d[2*nᵠ+nʷ+1:2:end],     # Q₁
+    :q₂ => d[2*nᵠ+nʷ+2:2:end]      # Q₂
+)
 
 @timeit to "calculate error" begin
     elements_err = getElements(nodes, entities["Ω"], 10)
-    prescribe!(elements_err, :E => E, :ν => ν, :h => h, :u => w, :φ₁ => φ₁, :φ₂ => φ₂)
+    prescribe!(elements_err, :E => E, :ν => ν, :h => h, :u => w, :φ₁ => φ₁, :φ₂ => φ₂, :Q₁ => Q₁, :Q₂ => Q₂)
     set𝝭!(elements_err)
     global L₂_w = L₂(elements_err)
     global L₂_φ = L₂φ(elements_err)
+    global L₂_Q = L₂Q(elements_err)
 end
 
 
@@ -230,18 +238,25 @@ println(to)
 println("α penalty: ", α)
 println("L₂ error of w: ", L₂_w)
 println("L₂ error of φ: ", L₂_φ)
-
-
+println("L₂ error of Q: ", L₂_Q)
 # 图--------------------------------------------------------------------------------
 
 # 坐标------------------------------------------------------------------------------
+# nₚ = length(nodes)
+# points = zeros(3,nₚ)
+# for (i,node) in enumerate(nodes)
+#     points[1,i] = node.x
+#     points[2,i] = node.y
+#     points[3,i] = node.d*4
+#     # points[3,i] = us[i]*4
+# end
 
 nₚ = length(nodes)
 points = zeros(3,nₚ)
 for (i,node) in enumerate(nodes)
     points[1,i] = node.x
     points[2,i] = node.y
-    points[3,i] = node.d/15
+    points[3,i] = node.d/18
     # points[3,i] = us[i]*4
 end
 
@@ -280,9 +295,9 @@ cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE, [xᵢ.𝐼 for xᵢ in elm.𝓒]) f
 # -------------------------------------------------------------------------------------------------
 
 # 三维变形------------------------------------------------------------------------------
-# vtk_grid("./vtk/circular_SS_tri3_" * string(ndiv) * ".vtu", points, cells;
+# vtk_grid("./vtk/circular_Clamped_tri3_" * string(ndiv) * ".vtu", points, cells;
 #          ascii=true, append=false, compress=false) do vtk
-vtk_grid("./vtk/circular_SS_tri3_$n.vtu", points, cells;
+vtk_grid("./vtk/circular_Clamped_mix_tri3_$n.vtu", points, cells;
          ascii=true, append=false, compress=false) do vtk
 
     # 挠度 w
@@ -291,5 +306,9 @@ vtk_grid("./vtk/circular_SS_tri3_$n.vtu", points, cells;
     vtk["phi_1"] = [node.d₁ for node in nodes]
     # 转角 φ₂  
     vtk["phi_2"] = [node.d₂ for node in nodes]
+
+    vtk["Q_1"] = [node.q₁ for node in nodes]
+      
+    vtk["Q_2"] = [node.q₂ for node in nodes]
 end
 # -------------------------------------------------------------------------------------------------

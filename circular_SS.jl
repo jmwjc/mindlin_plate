@@ -71,20 +71,18 @@ import Gmsh: gmsh
 r(x, y) = sqrt(x^2 + y^2)
 ξ(x, y) = r(x, y) / R
 
-w(x, y, z) = fz * R^4 / (64 * Dᵇ) * (1 - ξ(x, y)^2) * ((1 - ξ(x, y)^2) + 8 * h^2 / (3 * (5/6) * R^2 * (1 - ν)))
+w(x, y, z) = fz * R^4 / (64 * Dᵇ) * (1 - ξ(x, y)^2) * ((5 + ν) / (1 + ν) - ξ(x, y)^2 + 8 * h^2 / (3 * (5/6) * R^2 * (1 - ν)))
 
-
-φᵣ(x, y, z) = fz * r(x, y) * (r(x, y)^2 - R^2) / (16 * Dᵇ)
+φᵣ(x, y, z) = fz * r(x, y) / (16 * Dᵇ) * (r(x, y)^2 - (3 + ν) / (1 + ν) * R^2)
 φ₁(x,y,z) = φᵣ(x,y,z)*x/r(x,y)
 φ₂(x,y,z) = φᵣ(x,y,z)*y/r(x,y)
 
-κᵣᵣ(x, y, z) = -fz * R^2 * (3 * ξ(x, y)^2 - 1) / (16 * Dᵇ)
-κᵩᵩ(x, y, z) = -fz * R^2 * (ξ(x, y)^2 - 1) / (16 * Dᵇ)
-
+κᵣᵣ(x, y, z) = -fz * R^2 * (3 * ξ(x, y)^2 - (3 + ν)) / (16 * (1 + ν) * Dᵇ)
+κᵩᵩ(x, y, z) = -fz * R^2 * ((3 + ν) - (1 + ν) * ξ(x, y)^2) / (16 * (1 + ν) * Dᵇ)
 γᵣ(x, y, z) = -fz * r(x, y) / Dˢ
 
-Mᵣᵣ(x, y, z) = -fz * R^2 / 16 * ((3 + ν) * ξ(x, y)^2 - (1 + ν))
-Mᵩᵩ(x, y, z) = -fz * R^2 / 16 * ((1 + 3ν) * ξ(x, y)^2 - (1 + ν))
+Mᵣᵣ(x, y, z) = fz * R^2 * (3 + ν) / 16 * (1 - ξ(x, y)^2)
+Mᵩᵩ(x, y, z) = fz * R^2 / 16 * ((3 + ν) -(1 + 3ν) * ξ(x, y)^2)
 
 Qᵣ(x, y, z) = -fz * r(x, y) / 2
 # --------------------------------------------------------------------------------
@@ -113,16 +111,16 @@ gmsh.initialize()
 
 nʷ = length(nodes)
 nᵠ = length(nodes)
-
+nᵐ = length(nodes)
 kʷʷ = zeros(nʷ, nʷ)
 kᵠᵠ = zeros(2 * nᵠ, 2 * nᵠ)
 kᵠʷ = zeros(2 * nᵠ, nʷ)
 fʷ = zeros(nʷ)
 fᵠ = zeros(2 * nᵠ)
-
+fᵐ = zeros(2 * nᵐ)
 @timeit to "assemble domain" begin
     elements = getElements(nodes, entities["Ω"])
-    prescribe!(elements, :E => E, :ν => ν, :h => h, :q => fz)
+    prescribe!(elements, :E => E, :ν => ν, :h => h, :q => fz, )
     set∇𝝭!(elements)
 
     𝑎ʷʷ = ∫wwdΩ => elements
@@ -156,15 +154,18 @@ end
         :g => w,
         :g₁ => φ₁,
         :g₂ => φ₂,
+        :m₁ => Mᵣᵣ, 
+        :m₂ => Mᵩᵩ,
         :n₁₁ => 1.0,
         :n₁₂ => 0.0,
         :n₂₂ => 1.0,
     )
     𝑎ʷ = ∫αwwdΓ => elements
     𝑎ᵠ = ∫αφφdΓ => elements
+    𝑓ᵐ = ∫φmdΩ => elements
     @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
     @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
- 
+    @timeit to "assemble" 𝑓ᵐ(fᵐ)
 end
 
 @timeit to "Γˡ" begin
@@ -230,24 +231,17 @@ println("α penalty: ", α)
 println("L₂ error of w: ", L₂_w)
 println("L₂ error of φ: ", L₂_φ)
 
+
 # 图--------------------------------------------------------------------------------
 
 # 坐标------------------------------------------------------------------------------
-# nₚ = length(nodes)
-# points = zeros(3,nₚ)
-# for (i,node) in enumerate(nodes)
-#     points[1,i] = node.x
-#     points[2,i] = node.y
-#     points[3,i] = node.d*4
-#     # points[3,i] = us[i]*4
-# end
 
 nₚ = length(nodes)
 points = zeros(3,nₚ)
 for (i,node) in enumerate(nodes)
     points[1,i] = node.x
     points[2,i] = node.y
-    points[3,i] = node.d/15
+    points[3,i] = node.d/20
     # points[3,i] = us[i]*4
 end
 
@@ -286,9 +280,9 @@ cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE, [xᵢ.𝐼 for xᵢ in elm.𝓒]) f
 # -------------------------------------------------------------------------------------------------
 
 # 三维变形------------------------------------------------------------------------------
-# vtk_grid("./vtk/circular_Clamped_tri3_" * string(ndiv) * ".vtu", points, cells;
+# vtk_grid("./vtk/circular_SS_tri3_" * string(ndiv) * ".vtu", points, cells;
 #          ascii=true, append=false, compress=false) do vtk
-vtk_grid("./vtk/circular_Clamped_tri3_$n.vtu", points, cells;
+vtk_grid("./vtk/circular_SS_tri3_$n.vtu", points, cells;
          ascii=true, append=false, compress=false) do vtk
 
     # 挠度 w
