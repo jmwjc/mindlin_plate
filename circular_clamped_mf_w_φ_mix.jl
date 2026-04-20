@@ -35,8 +35,8 @@ w(x, y, z) = fz * R^4 / (64 * Dᵇ) * (1 - ξ(x, y)^2) * ((1 - ξ(x, y)^2) + 8 *
 
 
 φᵣ(x, y, z) = fz * r(x, y) * (r(x, y)^2 - R^2) / (16 * Dᵇ)
-φ₁(x,y,z) = φᵣ(x,y,z)*x/r(x,y)
-φ₂(x,y,z) = φᵣ(x,y,z)*y/r(x,y)
+φ₁(x,y,z) = r(x,y) ≈ 0.0 ? 0.0 : φᵣ(x,y,z)*x/r(x,y)
+φ₂(x,y,z) = r(x,y) ≈ 0.0 ? 0.0 : φᵣ(x,y,z)*y/r(x,y)
 φ₁₁(x,y,z) = φᵣ(x,y,z)*cos²θ - φᵣ(x,y,z)*sin²θ
 φ₁₂(x,y,z) = φᵣ(x,y,z)*sinθ*cosθ
 φ₂₂(x,y,z) = φᵣ(x,y,z)*sin²θ - φᵣ(x,y,z)*cos²θ
@@ -128,7 +128,6 @@ fᵠ = zeros(2*nᵠ)
 fʷ = zeros(nʷ)
 fˢ = zeros(2*nˢ)
 
-@timeit to "assemble domain" begin
     # ── Domain elements (Q/FEM + w/mf + φ/mf) ─────────────────────────────
     elements_q = getElements(nodes,   entities["Ω"], integrationOrder)
     elements_w = getElements(nodes_w, entities["Ω"], eval(type_w), integrationOrder, sp_w)
@@ -173,10 +172,7 @@ fˢ = zeros(2*nˢ)
     @timeit to "assemble" 𝑎ˢʷ(kˢʷ)
     @timeit to "assemble" 𝑓ʷ(fʷ) 
 
-    global elements_domain = elements_q
-end
-
-nₑ = length(elements_domain)
+nₑ = length(elements_q)
 nᵐ = nₑ * ApproxOperator.get𝑛𝑝(eval(type_M)(𝑿ᵢ[], 𝑿ₛ[]))
 
 @timeit to "Γᵉ" begin
@@ -283,24 +279,49 @@ println("nʷ=$nʷ, nᵠ=$nᵠ, nˢ=$nˢ, nᵐ=$nᵐ")
 println("L₂ error of w: ", L₂_w)
 println("L₂ error of φ: ", L₂_φ)
 println("L₂ error of Q: ", L₂_Q)
-# 图--------------------------------------------------------------------------------
 
-# 坐标------------------------------------------------------------------------------
-# nₚ = length(nodes)
-# points = zeros(3,nₚ)
-# for (i,node) in enumerate(nodes)
-#     points[1,i] = node.x
-#     points[2,i] = node.y
-#     points[3,i] = node.d*4
-#     # points[3,i] = us[i]*4
-# end
+wˢ = zeros(nˢ)
+φ₁ˢ = zeros(nˢ)
+φ₂ˢ = zeros(nˢ)
+for xᵢ in nodes
+    indices = sp_w(xᵢ.x,xᵢ.y,xᵢ.z)
+    ξᵢ = 𝑿ₛ((𝑔=1,𝐺=1,𝐶=1,𝑠=length(indices)), Dict([:x=>(1,[xᵢ.x]),:y=>(1,[xᵢ.y]),:z=>(1,[xᵢ.z])]))
+    𝓒 = nodes_w[[indices...]]
+    𝓖 = [ξᵢ]
+    element = [eval(type_w)(𝓒,𝓖)]
+    set𝝭!(element)
+    wᵢ = 0.0
+    N = ξᵢ[:𝝭]
+    for (i,xⱼ) in enumerate(𝓒)
+        wᵢ += N[i]*xⱼ.d
+    end
+    wˢ[xᵢ.𝐼] = wᵢ
 
-nₚ = length(nodes_w)
+    indices = sp_φ(xᵢ.x,xᵢ.y,xᵢ.z)
+    ξᵢ = 𝑿ₛ((𝑔=1,𝐺=1,𝐶=1,𝑠=length(indices)), Dict([:x=>(1,[xᵢ.x]),:y=>(1,[xᵢ.y]),:z=>(1,[xᵢ.z])]))
+    𝓒 = nodes_φ[[indices...]]
+    𝓖 = [ξᵢ]
+    element = [eval(type_φ)(𝓒,𝓖)]
+    set𝝭!(element)
+    φ₁ᵢ = 0.0
+    φ₂ᵢ = 0.0
+    N = ξᵢ[:𝝭]
+    for (i,xⱼ) in enumerate(𝓒)
+        φ₁ᵢ += N[i]*xⱼ.d₁
+        φ₂ᵢ += N[i]*xⱼ.d₂
+    end
+    φ₁ˢ[xᵢ.𝐼] = φ₁ᵢ
+    φ₂ˢ[xᵢ.𝐼] = φ₂ᵢ
+end
+push!(nodes,:w=>wˢ,:φ₁=>φ₁ˢ,:φ₂=>φ₂ˢ)
+
+nₚ = length(nodes)
 points = zeros(3,nₚ)
-for (i,node) in enumerate(nodes_w)
+for (i,node) in enumerate(nodes)
     points[1,i] = node.x
     points[2,i] = node.y
-    points[3,i] = node.d/15
+    points[3,i] = node.w/15
+    # points[3,i] = 0.0
     # points[3,i] = us[i]*4
 end
 
@@ -325,7 +346,7 @@ end
 
 # # cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE_STRIP, [xᵢ.𝐼 for xᵢ in elm.𝓒]) for elm in elements["Ω"]]
 # # vtk_grid("./vtk/circular_tri3_"*string(ndiv), points, cells) do vtk
-cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE, [xᵢ.𝐼 for xᵢ in elm.𝓒]) for elm in elements_domain]
+cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE, [xᵢ.𝐼 for xᵢ in elm.𝓒]) for elm in elements_q]
 
 
 # 三维误差-------------------------------------------------------------------------------------------------
@@ -345,15 +366,19 @@ vtk_grid("./vtk/circular_clamped_$(ndiv_φ)_tri3_$(ndiv_w).vtu", points, cells;
          ascii=true, append=false, compress=false) do vtk
 
    
-    vtk["w"] = [node.d for node in nodes_w]
-   
-    # vtk["phi_1"] = [node.d₁ for node in nodes_φ]
-     
-    # vtk["phi_2"] = [node.d₂ for node in nodes_φ]
+    vtk["w"] = [node.w for node in nodes]
+    vtk["φ₁"] = [node.φ₁ for node in nodes]
+    vtk["φ₂"] = [node.φ₂ for node in nodes]
+    vtk["q₁"] = [node.q₁ for node in nodes]
+    vtk["q₂"] = [node.q₂ for node in nodes]
+    vtk["qᵣ"] = [r(node.x,node.y) ≈ 0.0 ? 0.0 : node.q₁*node.x/r(node.x,node.y) + node.q₂*node.y/r(node.x,node.y) for node in nodes]
 
-    # vtk["Q_1"] = [node.q₁ for node in nodes]
-      
-    # vtk["Q_2"] = [node.q₂ for node in nodes]
+    vtk["w̄"] = [w(node.x,node.y,node.z) for node in nodes]
+    vtk["φ̄₁"] = [φ₁(node.x,node.y,node.z) for node in nodes]
+    vtk["φ̄₂"] = [φ₂(node.x,node.y,node.z) for node in nodes]
+    vtk["q̄₁"] = [Q₁(node.x,node.y,node.z) for node in nodes]
+    vtk["q̄₂"] = [Q₂(node.x,node.y,node.z) for node in nodes]
+    vtk["q̄ᵣ"] = [Qᵣ(node.x,node.y,node.z) for node in nodes]
 end
 
 # ──────────────────────────────────────────────────────────
