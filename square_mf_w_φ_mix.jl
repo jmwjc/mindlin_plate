@@ -42,7 +42,7 @@ ndiv_φ = 20
 ndiv_w = 25
 # ndiv = ndiv_φ
  XLSX.openxlsx("xls/square_$(ndiv_φ)_tri3_$(ndiv_w).xlsx", mode="w") do xf
-  for ndiv = ndiv_w:32
+  for ndiv = ndiv_w-2:32
  # ndiv_w = ndiv
  row = ndiv
 # ─── Deflection W ─────────────────────────────────────────

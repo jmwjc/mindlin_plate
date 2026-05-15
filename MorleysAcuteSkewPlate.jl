@@ -121,7 +121,7 @@ points = zeros(3,nₚ)
 for (i,node) in enumerate(nodes)
     points[1,i] = node.x
     points[2,i] = node.y
-    points[3,i] = node.d/20
+    points[3,i] = node.d
     # points[3,i] = us[i]*4
 end
 

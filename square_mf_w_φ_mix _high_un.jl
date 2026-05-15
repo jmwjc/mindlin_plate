@@ -57,11 +57,11 @@ type_φ = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
 # type_M = :(PiecewisePolynomial{:Quadratic2D})
-ndiv_φ = 16
+ndiv_φ = 20
 ndiv_w = 25
 ndiv = ndiv_φ
-XLSX.openxlsx("xls/square_high_un_16_tri3_25.xlsx", mode="w") do xf
-for ndiv = ndiv_w:32
+XLSX.openxlsx("xls/square_high_un_$(ndiv_φ)_tri3_$(ndiv_w).xlsx", mode="w") do xf
+for ndiv = ndiv_w-2:32
 # ndiv_w = ndiv
 row = ndiv
 # ─── Deflection W ─────────────────────────────────────────
