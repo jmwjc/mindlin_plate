@@ -2,6 +2,7 @@ using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements, getPiecewiseElements, getPiecewiseBoundaryElements
 import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫MMdΩ, ∫∇MφdΩ, ∫MφdΓ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂, L₂φ, L₂Q
 
+using LinearAlgebra
 using TimerOutputs, WriteVTK, XLSX 
 import Gmsh: gmsh
 
@@ -71,15 +72,15 @@ gmsh.initialize()
 # @timeit to "open msh file" gmsh.open("msh/patchtest_3.msh")
 # @timeit to "get nodes" nodes_s = get𝑿ᵢ()
 
-integrationOrder = 5
+integrationOrder = 2
 # ──────────────────────────────────────────────────────────
 type_w = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_φ = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
-ndiv_φ = 4
-ndiv_w = 4
-ndiv = 4
+ndiv_φ = 10
+ndiv_w = 11
+ndiv = 15
 sʷ = 1.5
 sᵠ = 1.5
 # XLSX.openxlsx("xls/patchtest.xlsx", mode="w") do xf
@@ -127,6 +128,10 @@ kᵠʷ = zeros(2*nᵠ,nʷ)
 fᵠ = zeros(2*nᵠ)
 fʷ = zeros(nʷ)
 fˢ = zeros(2*nˢ)
+kᵅᵠᵠ = zeros(2*nᵠ,2*nᵠ)
+kᵅʷʷ = zeros(nʷ,nʷ)
+fᵅᵠ = zeros(2*nᵠ)
+fᵅʷ = zeros(nʷ)
 
 @timeit to "calculate ∫QQdΩ ∫∇QwdΩ" begin
     @timeit to "get elements" elements_q = getElements(nodes, entities["Ω"], integrationOrder)
@@ -192,6 +197,7 @@ fᵐ = zeros(3*nᵐ)
     @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
+αʷ = 0e1;αᵠ = 1e1
 @timeit to "calculate ∫QwdΓ" begin
     @timeit to "get elements" elements_q_1 = getElements(nodes, entities["Γ¹"], integrationOrder, normal=true)
     @timeit to "get elements" elements_q_2 = getElements(nodes, entities["Γ²"], integrationOrder, normal=true)
@@ -201,10 +207,10 @@ end
     @timeit to "get elements" elements_w_2 = getElements(nodes_w, entities["Γ²"], eval(type_w), integrationOrder, sp_w, normal=true)
     @timeit to "get elements" elements_w_3 = getElements(nodes_w, entities["Γ³"], eval(type_w), integrationOrder, sp_w, normal=true)
     @timeit to "get elements" elements_w_4 = getElements(nodes_w, entities["Γ⁴"], eval(type_w), integrationOrder, sp_w, normal=true)
-    prescribe!(elements_w_1, :α=>1e8*E, :g=>w)
-    prescribe!(elements_w_2, :α=>1e8*E, :g=>w)
-    prescribe!(elements_w_3, :α=>1e8*E, :g=>w)
-    prescribe!(elements_w_4, :α=>1e8*E, :g=>w)
+    prescribe!(elements_w_1, :α=>αʷ, :g=>w)
+    prescribe!(elements_w_2, :α=>αʷ, :g=>w)
+    prescribe!(elements_w_3, :α=>αʷ, :g=>w)
+    prescribe!(elements_w_4, :α=>αʷ, :g=>w)
     @timeit to "calculate shape functions" set𝝭!(elements_q_1)
     @timeit to "calculate shape functions" set𝝭!(elements_q_2)
     @timeit to "calculate shape functions" set𝝭!(elements_q_3)
@@ -214,7 +220,9 @@ end
     @timeit to "calculate shape functions" set𝝭!(elements_w_3)
     @timeit to "calculate shape functions" set𝝭!(elements_w_4)
     𝑎 = ∫QwdΓ=>(elements_q_1∪elements_q_2∪elements_q_3∪elements_q_4,elements_w_1∪elements_w_2∪elements_w_3∪elements_w_4)
+    𝑎ʷ = ∫αwwdΓ=>elements_w_1∪elements_w_2∪elements_w_3∪elements_w_4
     @timeit to "assemble" 𝑎(kˢʷ,fˢ)
+    @timeit to "assemble" 𝑎ʷ(kᵅʷʷ,fᵅʷ)
 end
 
 @timeit to "calculate ∫MφdΓ" begin
@@ -226,16 +234,18 @@ end
     @timeit to "get elements" elements_φ_2 = getElements(nodes_φ, entities["Γ²"], eval(type_φ), integrationOrder, sp_φ, normal=true)
     @timeit to "get elements" elements_φ_3 = getElements(nodes_φ, entities["Γ³"], eval(type_φ), integrationOrder, sp_φ, normal=true)
     @timeit to "get elements" elements_φ_4 = getElements(nodes_φ, entities["Γ⁴"], eval(type_φ), integrationOrder, sp_φ, normal=true)
-    prescribe!(elements_φ_1, :α=>1e8*E, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-    prescribe!(elements_φ_2, :α=>1e8*E, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-    prescribe!(elements_φ_3, :α=>1e8*E, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-    prescribe!(elements_φ_4, :α=>1e8*E, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_φ_1, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_φ_2, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_φ_3, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_φ_4, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
     @timeit to "calculate shape functions" set𝝭!(elements_φ_1)
     @timeit to "calculate shape functions" set𝝭!(elements_φ_2)
     @timeit to "calculate shape functions" set𝝭!(elements_φ_3)
     @timeit to "calculate shape functions" set𝝭!(elements_φ_4)
     𝑎 = ∫MφdΓ=>(elements_m_1∪elements_m_2∪elements_m_3∪elements_m_4,elements_φ_1∪elements_φ_2∪elements_φ_3∪elements_φ_4)
+    𝑎ᵅ = ∫αφφdΓ=>elements_φ_1∪elements_φ_2∪elements_φ_3∪elements_φ_4
     @timeit to "assemble" 𝑎(kᵐᵠ,fᵐ)
+    @timeit to "assemble" 𝑎ᵅ(kᵅᵠᵠ,fᵅᵠ)
 end
 
 # ──────────────────────────────────────────────────────────
@@ -290,13 +300,44 @@ end
 # println(norm(kᵠʷ'*dᵠ+kʷʷ*dʷ+kˢʷ'*dˢ+kᵐʷ'*dᵐ - fʷ))
 # println(norm(kˢᵠ*dᵠ+kˢʷ*dʷ+kˢˢ*dˢ+kˢᵐ*dᵐ - fˢ))
 # println(norm(kᵐᵠ*dᵠ+kᵐʷ*dʷ+kˢᵐ'*dˢ+kᵐᵐ*dᵐ - fᵐ))
+
+# println(kˢˢ*dˢ - (fˢ-kˢᵠ*dᵠ-kˢʷ*dʷ))
+# println(dˢ - kˢˢ\(fˢ-kˢᵠ*dᵠ-kˢʷ*dʷ))
+# println(kᵐᵐ*dᵐ - (fᵐ-kᵐᵠ*dᵠ-kᵐʷ*dʷ))
+# println(dᵐ - kᵐᵐ\(fᵐ-kᵐᵠ*dᵠ-kᵐʷ*dʷ))
+# println(kᵠᵠ*dᵠ+kᵠʷ*dʷ+kˢᵠ'*dˢ+kᵐᵠ'*dᵐ - fᵠ)
+# println(kˢᵠ'*dˢ+kᵐᵠ'*dᵐ - fᵠ)
+# println(kˢᵠ'*(kˢˢ\(fˢ-kˢᵠ*dᵠ-kˢʷ*dʷ))+kᵐᵠ'*(kᵐᵐ\(fᵐ-kᵐᵠ*dᵠ-kᵐʷ*dʷ)) - fᵠ)
+# println((kˢᵠ'*(kˢˢ\fˢ)-kˢᵠ'*(kˢˢ\kˢᵠ)*dᵠ-kˢᵠ'*(kˢˢ\kˢʷ)*dʷ)+(kᵐᵠ'*(kᵐᵐ\fᵐ)-kᵐᵠ'*(kᵐᵐ\kᵐᵠ)*dᵠ-kᵐᵠ'*(kᵐᵐ\kᵐʷ)*dʷ) - fᵠ)
+# println(-(kˢᵠ'*(kˢˢ\kˢᵠ)+kᵐᵠ'*(kᵐᵐ\kᵐᵠ))*dᵠ-(kˢᵠ'*(kˢˢ\kˢʷ)+kᵐᵠ'*(kᵐᵐ\kᵐʷ))*dʷ - (fᵠ-kˢᵠ'*(kˢˢ\fˢ)-kᵐᵠ'*(kᵐᵐ\fᵐ)))
+# println(kˢʷ'*dˢ+kᵐʷ'*dᵐ-fʷ)
+# println(kˢʷ'*(kˢˢ\(fˢ-kˢᵠ*dᵠ-kˢʷ*dʷ))+kᵐʷ'*(kᵐᵐ\(fᵐ-kᵐᵠ*dᵠ-kᵐʷ*dʷ))-fʷ)
+# println((kˢʷ'*(kˢˢ\fˢ)-kˢʷ'*(kˢˢ\kˢᵠ)*dᵠ-kˢʷ'*(kˢˢ\kˢʷ)*dʷ)+(kᵐʷ'*(kᵐᵐ\fᵐ)-kᵐʷ'*(kᵐᵐ\kᵐᵠ)*dᵠ-kᵐʷ'*(kᵐᵐ\kᵐʷ)*dʷ)-fʷ)
+# println(-(kˢʷ'*(kˢˢ\kˢᵠ)+kᵐʷ'*(kᵐᵐ\kᵐᵠ))*dᵠ-(kˢʷ'*(kˢˢ\kˢʷ)+kᵐʷ'*(kᵐᵐ\kᵐʷ))*dʷ-(fʷ-kˢʷ'*(kˢˢ\fˢ)-kᵐʷ'*(kᵐᵐ\fᵐ)))
+k = -[kˢᵠ'*(kˢˢ\kˢᵠ)+kᵐᵠ'*(kᵐᵐ\kᵐᵠ)-kᵅᵠᵠ kˢᵠ'*(kˢˢ\kˢʷ)+kᵐᵠ'*(kᵐᵐ\kᵐʷ);kˢʷ'*(kˢˢ\kˢᵠ)+kᵐʷ'*(kᵐᵐ\kᵐᵠ) kˢʷ'*(kˢˢ\kˢʷ)+kᵐʷ'*(kᵐᵐ\kᵐʷ)-kᵅʷʷ]
+f = [fᵠ-kˢᵠ'*(kˢˢ\fˢ)-kᵐᵠ'*(kᵐᵐ\fᵐ)+fᵅᵠ;fʷ-kˢʷ'*(kˢˢ\fˢ)-kᵐʷ'*(kᵐᵐ\fᵐ)+fᵅʷ]
+# println(kᵅʷʷ*dʷ-fᵅʷ)
+# println(kᵅᵠᵠ*dᵠ-fᵅᵠ)
+println(norm(k*[dᵠ;dʷ]-f))
 # ──────────────────────────────────────────────────────────
-@timeit to "solve" d = [kᵠᵠ kᵠʷ kˢᵠ' kᵐᵠ';kᵠʷ' kʷʷ kˢʷ' kᵐʷ';kˢᵠ kˢʷ kˢˢ kˢᵐ;kᵐᵠ kᵐʷ kˢᵐ' kᵐᵐ]\[fᵠ;fʷ;fˢ;fᵐ]
-push!(nodes_φ,:d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ])
-push!(nodes_w,:d=>d[2*nᵠ+1:2*nᵠ+nʷ])
-push!(nodes,:q₁=>d[2*nᵠ+nʷ+1:2:2*nᵠ+nʷ+2*nˢ], :q₂=>d[2*nᵠ+nʷ+2:2:2*nᵠ+nʷ+2*nˢ])
-push!(nodes,:m₁₁=>d[2*nᵠ+nʷ+2*nˢ+1:3:end],:m₂₂=>d[2*nᵠ+nʷ+2*nˢ+2:3:end],:m₁₂=>d[2*nᵠ+nʷ+2*nˢ+3:3:end])
-# ──────────────────────────────────────────────────────────
+# @timeit to "solve" d = [kᵠᵠ kᵠʷ kˢᵠ' kᵐᵠ';kᵠʷ' kʷʷ kˢʷ' kᵐʷ';kˢᵠ kˢʷ kˢˢ kˢᵐ;kᵐᵠ kᵐʷ kˢᵐ' kᵐᵐ]\[fᵠ;fʷ;fˢ;fᵐ]
+# push!(nodes_φ,:d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ])
+# push!(nodes_w,:d=>d[2*nᵠ+1:2*nᵠ+nʷ])
+# push!(nodes,:q₁=>d[2*nᵠ+nʷ+1:2:2*nᵠ+nʷ+2*nˢ], :q₂=>d[2*nᵠ+nʷ+2:2:2*nᵠ+nʷ+2*nˢ])
+# push!(nodes,:m₁₁=>d[2*nᵠ+nʷ+2*nˢ+1:3:end],:m₂₂=>d[2*nᵠ+nʷ+2*nˢ+2:3:end],:m₁₂=>d[2*nᵠ+nʷ+2*nˢ+3:3:end])
+
+## ──────────────────────────────────────────────────────────
+d = k\f
+dᵠ = d[1:2*nᵠ]
+dʷ = d[2*nᵠ+1:2*nᵠ+nʷ]
+dˢ = kˢˢ\(fˢ-kˢᵠ*dᵠ-kˢʷ*dʷ)
+dᵐ = kᵐᵐ\(fᵐ-kᵐᵠ*dᵠ-kᵐʷ*dʷ)
+
+push!(nodes_φ,:d₁=>dᵠ[1:2:2*nᵠ], :d₂=>dᵠ[2:2:2*nᵠ])
+push!(nodes_w,:d=>dʷ)
+push!(nodes,:q₁=>dˢ[1:2:end], :q₂=>dˢ[2:2:end])
+push!(nodes,:m₁₁=>dᵐ[1:3:end],:m₂₂=>dᵐ[2:3:end],:m₁₂=>dᵐ[3:3:end])
+
 @timeit to "calculate error" begin
     @timeit to "get elements" elements_φ = getElements(nodes_φ, entities["Ω"], eval(type_φ), 10, sp_φ)
     @timeit to "get elements" elements_w = getElements(nodes_w, entities["Ω"], eval(type_w), 10, sp_w)
@@ -304,18 +345,12 @@ push!(nodes,:m₁₁=>d[2*nᵠ+nʷ+2*nˢ+1:3:end],:m₂₂=>d[2*nᵠ+nʷ+2*nˢ+2
     @timeit to "get elements" elements_m = getElements(nodes, entities["Ω"], 10)
     prescribe!(elements_φ, :E=>E, :ν=>ν, :h=>h, :φ₁=>φ₁, :φ₂=>φ₂)
     @timeit to "calculate shape functions" set𝝭!(elements_φ)
-    prescribe!(elements_w, :E=>E, :ν=>ν, :h=>h, :u=>w)
+    prescribe!(elements_w, :E=>E, :ν=>ν, :h=>h, :w=>w)
     @timeit to "calculate shape functions" set𝝭!(elements_w)
     prescribe!(elements_q, :E=>E, :ν=>ν, :h=>h, :Q₁=>Q₁, :Q₂=>Q₂)
     @timeit to "calculate shape functions" set𝝭!(elements_q)
     prescribe!(elements_m, :E=>E, :ν=>ν, :h=>h, :M₁₁=>Q₁, :Q₂=>Q₂)
     @timeit to "calculate shape functions" set𝝭!(elements_q)
-end
-
-@timeit to "calculate error" begin
-    L₂_w = L₂(elements_w)
-    L₂_φ = L₂φ(elements_φ)
-    L₂_Q = L₂Q(elements_q)
 end
 
 # points = zeros(3, nᵛ)
@@ -336,9 +371,16 @@ end
 
 # println(to)
 
-println("L₂ error of w: ", L₂_w)
-println("L₂ error of φ: ", L₂_φ)
-println("L₂ error of Q: ", L₂_Q)
+@timeit to "calculate error" begin
+    L₂_w = L₂(elements_w)
+    L₂_φ = L₂φ(elements_φ)
+    L₂_Q = L₂Q(elements_q)
+end
+println("h=$h,αʷ=$αʷ,αᵠ=$αᵠ,nᵠ=$nᵠ,nʷ=$nʷ,nˢ=$nˢ,nᵐ=$nᵐ")
+println("L₂ error of w: ", log10(L₂_w))
+println("L₂ error of φ: ", log10(L₂_φ))
+println("L₂ error of Q: ", log10(L₂_Q))
+
 # ──────────────────────────────────────────────────────────
 #     sheet = xf[1]
 #     XLSX.rename!(sheet, "new_sheet")

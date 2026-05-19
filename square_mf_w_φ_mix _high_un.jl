@@ -26,7 +26,7 @@ end
 
 E = 10.92e6
 ν = 0.3
-h = 1e-5
+h = 1e-0
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -58,7 +58,7 @@ type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
 # type_M = :(PiecewisePolynomial{:Quadratic2D})
 ndiv_φ = 16
-ndiv_w = 15
+ndiv_w = 18
 # ndiv = ndiv_φ
 # ─── Deflection W ─────────────────────────────────────────
 @timeit to "open msh file" gmsh.open("msh/patchtest_high_un_tri3_$ndiv_w.msh")
@@ -107,7 +107,7 @@ sp_φ = RegularGrid(xᵠ,yᵠ,zᵠ,n = 3,γ = 5)
 #s₃ = 1.5*s*ones(nᵠ)
 #push!(nodes_φ,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
 XLSX.openxlsx("xls/square_high_un_$(ndiv_φ)_tri3_$(ndiv_w).xlsx", mode="w") do xf
-for ndiv = 16:16
+for ndiv = 15:15
 # ndiv_w = ndiv
 row = ndiv
 # ─── Shear ────────────────────────────────────────────────

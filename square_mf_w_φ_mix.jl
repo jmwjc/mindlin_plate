@@ -7,7 +7,7 @@ import Gmsh: gmsh
 
 E = 10.92e6
 ν = 0.3
-h = 1e-5
+h = 1e-0
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -31,18 +31,18 @@ gmsh.initialize()
 # @timeit to "open msh file" gmsh.open("msh/patchtest_3.msh")
 # @timeit to "get nodes" nodes_s = get𝑿ᵢ()
 
-integrationOrder = 5
+integrationOrder = 2
 # ──────────────────────────────────────────────────────────
 type_w = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_φ = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
 # type_M = :(PiecewisePolynomial{:Quadratic2D})
-ndiv_φ = 20
-ndiv_w = 25
-# ndiv = ndiv_φ
+ndiv_φ = 16
+ndiv_w = 16
+ndiv = ndiv_φ
  XLSX.openxlsx("xls/square_$(ndiv_φ)_tri3_$(ndiv_w).xlsx", mode="w") do xf
-  for ndiv = ndiv_w-2:32
+# for ndiv = ndiv_w-2:32
  # ndiv_w = ndiv
  row = ndiv
 # ─── Deflection W ─────────────────────────────────────────
@@ -309,7 +309,7 @@ println("L₂ error of Q: ", L₂_Q)
      sheet["K$row"] = log10(L₂_Q)
 
  end
- end
+#  end
 gmsh.finalize()
 
 
