@@ -1,7 +1,7 @@
 a = 1.0;
 b = 1.0;
 c = 0.075;
-n = 16;
+n = 2;
 
 Point(1) = {0.0, 0.0, 0.0, c};
 Point(2) = {  a, 0.0, 0.0, c};
@@ -31,8 +31,8 @@ Mesh.RecombinationAlgorithm = 2;
 Mesh.SubdivisionAlgorithm = 1;
 Mesh.MshFileVersion = 2;
 Mesh.Renumber = 0;
-//RecombineMesh;
+RecombineMesh;
 Mesh.QuadDominant = 1;
 SetOrder 2;
-//Mesh.SecondOrderIncomplete = 1;
+Mesh.SecondOrderIncomplete = 1;
 Mesh 2;

@@ -22,12 +22,14 @@ m₂(x,y,z) = 0.0
 
 # hard targets on Γᵇ and Γᵗ (先用这些名字保证后续 prescribe! 不报错)
 w(x,y,z)  = 0.0
+# βx0(x,y,z) = 0.0
+# βy0(x,y,z) = 0.0
 φ₁(x,y,z) = 0.0
 φ₂(x,y,z) = 0.0
 
 const to = TimerOutput()
 
-n=16
+n=100
 
 gmsh.initialize()
 @timeit to "open msh file" gmsh.open("msh/MorleysAcuteSkewPlate/MorleysAcuteSkewPlate_$n.msh")
@@ -42,8 +44,12 @@ kᵠʷ = zeros(2*nᵠ,nʷ)
 fʷ = zeros(nʷ)
 fᵠ = zeros(2*nᵠ)
 
+# integrationOrder_bend = 3
+# integrationOrder_shear = 1
+
 @timeit to "calculate ∫κκdΩ, ∫wwdΩ, ∫φφdΩ, ∫wφdΩ" begin
     @timeit to "get elements" elements = getElements(nodes, entities["Ω"])
+
     prescribe!(elements, :E=>E, :ν=>ν, :h=>h, :q=>q, :m₁=>m₁, :m₂=>m₂)
     @timeit to "calculate shape functions" set∇𝝭!(elements)
     𝑎ʷʷ = ∫wwdΩ=>elements
@@ -62,7 +68,35 @@ fᵠ = zeros(2*nᵠ)
 
     global elements_domain = elements
 
+# @timeit to "get elements (bend)"  elements_bend  = getElements(nodes, entities["Ω"], integrationOrder_bend)
+#     @timeit to "get elements (shear)" elements_shear = getElements(nodes, entities["Ω"], integrationOrder_shear)
+
+#     prescribe!(elements_bend,  :E=>E, :ν=>ν, :h=>h, :q=>q, :m₁=>m₁, :m₂=>m₂)
+#     prescribe!(elements_shear, :E=>E, :ν=>ν, :h=>h)
+
+#     @timeit to "calculate shape functions (bend)"  set∇𝝭!(elements_bend)
+#     @timeit to "calculate shape functions (shear)" set∇𝝭!(elements_shear)
+
+#     𝑎ʷʷ = ∫wwdΩ=>elements_shear
+#     𝑎ᵠʷ = ∫φwdΩ=>elements_shear
+#     𝑎ᵠᵠ = [
+#         ∫φφdΩ=>elements_shear,
+#         ∫κκdΩ=>elements_bend,
+#     ]
+#     𝑓ʷ = ∫wqdΩ=>elements_bend
+#     𝑓ᵠ = ∫φmdΩ=>elements_bend
+
+#     @timeit to "assemble" 𝑎ʷʷ(kʷʷ)
+#     @timeit to "assemble" 𝑎ᵠʷ(kᵠʷ)
+#     @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
+#     @timeit to "assemble" 𝑓ʷ(fʷ)
+#     @timeit to "assemble" 𝑓ᵠ(fᵠ)
+
+    # global elements_domain = elements_bend
+
 end
+
+
 
 @timeit to "calculate ∫αwwdΓ ∫αφφdΓ" begin
     @timeit to "get elements" elements_b = getElements(nodes, entities["Γᵇ"])
@@ -71,6 +105,8 @@ end
     α = 1e8 * E
     prescribe!(elements_b, :α=>α, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
     prescribe!(elements_t, :α=>α, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    # prescribe!(elements_b, :α=>α, :g=>w, :g₁=>βx0, :g₂=>βy0, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>0.0)
+    # prescribe!(elements_t, :α=>α, :g=>w, :g₁=>βx0, :g₂=>βy0, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>0.0)
 
     @timeit to "calculate shape functions" set𝝭!(elements_b)
     @timeit to "calculate shape functions" set𝝭!(elements_t)
@@ -121,7 +157,7 @@ points = zeros(3,nₚ)
 for (i,node) in enumerate(nodes)
     points[1,i] = node.x
     points[2,i] = node.y
-    points[3,i] = node.d
+    points[3,i] = node.d/500
     # points[3,i] = us[i]*4
 end
 
