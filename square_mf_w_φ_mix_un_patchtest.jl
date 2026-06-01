@@ -8,7 +8,7 @@ import Gmsh: gmsh
 
 E = 10.92e6
 ν = 0.3
-h = 1e-5
+h = 1e-6
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -27,6 +27,7 @@ w₂(x,y,z) = (x-1)^3*x^3*(y-1)^2*y^2*(2*y-1)-2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2
 φ₁₂₂(x,y,z) = ( 6*y*(y-1) * ( (2*y-1)^2 + y*(y-1) ) ) * ( x^2*(x-1)^2*(2*x-1) )
 φ₂₂₁(x,y,z) = 3*x^2*(x-1)^2*(2*x-1) * ( 2*y*(y-1)*(2*y-1)^2 + 2*y^2*(y-1)^2 )
 φ₂₂₂(x,y,z) = x^3*(x-1)^3 * ( 2*(2*y-1) * ( (2*y-1)^2 + 6*y*(y-1) ) )
+q(x,y,z) = E*h^3/(12*(1-ν^2))*(12*y*(y-1)*(5*x^2-5*x+1)*(2*y^2*(y-1)^2+x*(x-1)*(5*y^2-5*y+1))+12*x*(x-1)*(5*y^2-5*y+1)*(2*x^2*(x-1)^2+y*(y-1)*(5*x^2-5*x+1)))
 
 
 # w(x, y, z) = 1.0 + x + y
@@ -47,21 +48,21 @@ w₂(x,y,z) = (x-1)^3*x^3*(y-1)^2*y^2*(2*y-1)-2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2
 # φ₁₂₁(x, y, z) = 0.0
 # φ₁₂₂(x, y, z) = 0.0
 
-M₁₁(x, y, z) = -Dᵇ * (φ₁₁(x, y, z) + ν * φ₂₂(x, y, z))
-M₁₂(x, y, z) = -Dᵇ * (1 - ν) * 0.5 * (φ₁₂(x, y, z) + φ₂₁(x, y, z))
-M₂₂(x, y, z) = -Dᵇ * (ν * φ₁₁(x, y, z) + φ₂₂(x, y, z))
-M₁₁₁(x, y, z) = -Dᵇ * (φ₁₁₁(x, y, z) + ν * φ₂₂₁(x, y, z))
-M₁₂₂(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₂(x, y, z)
-M₁₂₁(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₁(x, y, z)
-M₂₂₂(x, y, z) = -Dᵇ * (ν * φ₁₁₂(x, y, z) + φ₂₂₂(x, y, z))
+# M₁₁(x, y, z) = -Dᵇ * (φ₁₁(x, y, z) + ν * φ₂₂(x, y, z))
+# M₁₂(x, y, z) = -Dᵇ * (1 - ν) * 0.5 * (φ₁₂(x, y, z) + φ₂₁(x, y, z))
+# M₂₂(x, y, z) = -Dᵇ * (ν * φ₁₁(x, y, z) + φ₂₂(x, y, z))
+# M₁₁₁(x, y, z) = -Dᵇ * (φ₁₁₁(x, y, z) + ν * φ₂₂₁(x, y, z))
+# M₁₂₂(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₂(x, y, z)
+# M₁₂₁(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₁(x, y, z)
+# M₂₂₂(x, y, z) = -Dᵇ * (ν * φ₁₁₂(x, y, z) + φ₂₂₂(x, y, z))
 
 Q₁(x, y, z) = Dˢ * (w₁(x, y, z) - φ₁(x, y, z))
 Q₂(x, y, z) = Dˢ * (w₂(x, y, z) - φ₂(x, y, z))
-Q₁₁(x, y, z) = Dˢ * (w₁₁(x, y, z) - φ₁₁(x, y, z))
-Q₂₂(x, y, z) = Dˢ * (w₂₂(x, y, z) - φ₂₂(x, y, z))
-q(x, y, z) = -Q₁₁(x, y, z) - Q₂₂(x, y, z)
-m₁(x, y, z) = M₁₁₁(x, y, z) + M₁₂₂(x, y, z) - Q₁(x, y, z)
-m₂(x, y, z) = M₁₂₁(x, y, z) + M₂₂₂(x, y, z) - Q₂(x, y, z)
+# Q₁₁(x, y, z) = Dˢ * (w₁₁(x, y, z) - φ₁₁(x, y, z))
+# Q₂₂(x, y, z) = Dˢ * (w₂₂(x, y, z) - φ₂₂(x, y, z))
+# q(x, y, z) = -Q₁₁(x, y, z) - Q₂₂(x, y, z)
+# m₁(x, y, z) = M₁₁₁(x, y, z) + M₁₂₂(x, y, z) - Q₁(x, y, z)
+# m₂(x, y, z) = M₁₂₁(x, y, z) + M₂₂₂(x, y, z) - Q₂(x, y, z)
 
 # Γ¹: y=0,   n=(0,-1)
 M₁_Γ1(x,y,z) = -M₁₂(x,y,z)
@@ -93,7 +94,7 @@ type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
 # type_M = :(PiecewisePolynomial{:Quadratic2D})
 ndiv_φ = 16
-ndiv_w = 14
+ndiv_w = 17
 ndiv = 16
 # for ndiv_w = 10:25
 # ndiv = ndiv_φ
@@ -151,7 +152,7 @@ fᵅʷ = zeros(nʷ)
 
 @timeit to "calculate ∫QQdΩ ∫∇QwdΩ" begin
     @timeit to "get elements" elements_q = getElements(nodes, entities["Ω"], integrationOrder)
-    prescribe!(elements_q, :E=>E, :ν=>ν, :h=>h, :m₁ => m₁, :m₂ => m₂, :q => q)
+    prescribe!(elements_q, :E=>E, :ν=>ν, :h=>h, :q => q)
     @timeit to "calculate shape functions" set∇𝝭!(elements_q)
 
     @timeit to "get elements" elements_w = getElements(nodes_w, entities["Ω"], eval(type_w), integrationOrder, sp_w)
@@ -186,11 +187,11 @@ fᵐ = zeros(3*nᵐ)
 
 @timeit to "calculate ∫MMdΩ ∫MφdΩ" begin
     @timeit to "get elements" elements_m = getPiecewiseElements(entities["Ω"], eval(type_M), integrationOrder)
-    prescribe!(elements_m, :E=>E, :ν=>ν, :h=>h, :m₁ => m₁, :m₂ => m₂)
+    prescribe!(elements_m, :E=>E, :ν=>ν, :h=>h)
     @timeit to "calculate shape functions" set∇𝝭!(elements_m)
 
     @timeit to "get elements" elements_φ = getElements(nodes_φ, entities["Ω"], eval(type_φ), integrationOrder, sp_φ)
-    prescribe!(elements_φ, :E=>E, :ν=>ν, :h=>h, :m₁ => m₁, :m₂ => m₂)
+    prescribe!(elements_φ, :E=>E, :ν=>ν, :h=>h)
     @timeit to "calculate shape functions" set𝝭!(elements_φ)
 
     @timeit to "get elements" elements_φ_Γ = getElements(nodes_φ, entities["Γ"], eval(type_φ), integrationOrder, sp_φ, normal=true)
@@ -199,7 +200,7 @@ fᵐ = zeros(3*nᵐ)
     @timeit to "get elements" elements_m_Γ = getPiecewiseBoundaryElements(entities["Γ"], entities["Ω"], eval(type_M), integrationOrder)
     @timeit to "calculate shape functions" set𝝭!(elements_m_Γ)
 
-     𝑎ᵠᵠ = ∫κκdΩ => elements_φ
+    𝑎ᵠᵠ = ∫κκdΩ => elements_φ
     𝑎ᵐᵐ = ∫MMdΩ => elements_m
     𝑎ᵐᵠ = [
         ∫∇MφdΩ => (elements_m, elements_φ),
@@ -210,11 +211,11 @@ fᵐ = zeros(3*nᵐ)
     @timeit to "assemble" 𝑎ᵐᵐ(kᵐᵐ)
     @timeit to "assemble" 𝑎ᵐᵠ(kᵐᵠ)
     @timeit to "assemble" 𝑎ˢᵠ(kˢᵠ)
-    @timeit to "assemble" 𝑓ᵠ(fᵠ)
+    # @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
 αʷ = 0e2*Dˢ
-αᵠ = 1e1*Dᵇ
+αᵠ = 0e1*Dᵇ
 # αʷ = 0e0*Dˢ;αᵠ = 0e13*Dᵇ;
 @timeit to "calculate ∫QwdΓ" begin
     @timeit to "get elements" elements_q_1 = getElements(nodes, entities["Γ¹"], integrationOrder, normal=true)
@@ -240,7 +241,7 @@ end
     𝑎 = ∫QwdΓ => (elements_q_1 ∪ elements_q_2 ∪ elements_q_3 ∪ elements_q_4, elements_w_1 ∪ elements_w_2 ∪ elements_w_3 ∪ elements_w_4)
     𝑎ʷ = ∫αwwdΓ => elements_w_1 ∪ elements_w_2 ∪ elements_w_3 ∪ elements_w_4
     @timeit to "assemble" 𝑎(kˢʷ,fˢ)
-    @timeit to "assemble" 𝑎ʷ(kᵅʷʷ, fᵅʷ)
+    # @timeit to "assemble" 𝑎ʷ(kᵅʷʷ, fᵅʷ)
 end
 
 @timeit to "calculate ∫MφdΓ" begin
@@ -263,7 +264,7 @@ end
     𝑎 = ∫MφdΓ => (elements_m_1 ∪ elements_m_2 ∪ elements_m_3 ∪ elements_m_4, elements_φ_1 ∪ elements_φ_2 ∪ elements_φ_3 ∪ elements_φ_4)
     
     𝑎ᵅ = ∫αφφdΓ => elements_φ_1 ∪ elements_φ_2 ∪ elements_φ_3 ∪ elements_φ_4
-    # @timeit to "assemble" 𝑎(kᵐᵠ,fᵐ)
+    @timeit to "assemble" 𝑎(kᵐᵠ,fᵐ)
     # @timeit to "assemble" 𝑎ᵅ(kᵅᵠᵠ, fᵅᵠ)
 end
 
@@ -273,10 +274,10 @@ end
     @timeit to "get elements" elements_φ_3 = getElements(nodes_φ, entities["Γ³"], eval(type_φ), integrationOrder, sp_φ, normal=true)
     @timeit to "get elements" elements_φ_4 = getElements(nodes_φ, entities["Γ⁴"], eval(type_φ), integrationOrder, sp_φ, normal=true)
 
-    prescribe!(elements_φ_1, :α=>αᵠ, :M₁=>M₁_Γ1, :M₂=>M₂_Γ1)
-    prescribe!(elements_φ_2, :α=>αᵠ, :M₁=>M₁_Γ2, :M₂=>M₂_Γ2)
-    prescribe!(elements_φ_3, :α=>αᵠ, :M₁=>M₁_Γ3, :M₂=>M₂_Γ3)
-    prescribe!(elements_φ_4, :α=>αᵠ, :M₁=>M₁_Γ4, :M₂=>M₂_Γ4)
+    prescribe!(elements_φ_1, :α=>αᵠ)
+    prescribe!(elements_φ_2, :α=>αᵠ)
+    prescribe!(elements_φ_3, :α=>αᵠ)
+    prescribe!(elements_φ_4, :α=>αᵠ)
 
     @timeit to "calculate shape functions" set𝝭!(elements_φ_1)
     @timeit to "calculate shape functions" set𝝭!(elements_φ_2)
@@ -284,7 +285,7 @@ end
     @timeit to "calculate shape functions" set𝝭!(elements_φ_4)
 
     𝑓ᴹ = ∫φMdΓ => (elements_φ_1 ∪ elements_φ_2 ∪ elements_φ_3 ∪ elements_φ_4)
-    @timeit to "assemble" 𝑓ᴹ(fᵠ)
+    # @timeit to "assemble" 𝑓ᴹ(fᵠ)
 end
 # ──────────────────────────────────────────────────────────
 # dᵠ = zeros(2*nᵠ)
@@ -323,25 +324,25 @@ end
 # println(kˢᵠ*dᵠ+kˢʷ*dʷ+kˢˢ*dˢ+kˢᵐ*dᵐ - fˢ)
 # println(kᵐᵠ*dᵠ+kᵐʷ*dʷ+kˢᵐ'*dˢ+kᵐᵐ*dᵐ - fᵐ)
 # ──────────────────────────────────────────────────────────
-# @timeit to "solve" d = [kᵠᵠ+kᵅᵠᵠ kᵠʷ kˢᵠ' kᵐᵠ';kᵠʷ' kʷʷ+kᵅʷʷ kˢʷ' kᵐʷ';kˢᵠ kˢʷ kˢˢ kˢᵐ;kᵐᵠ kᵐʷ kˢᵐ' kᵐᵐ]\[fᵠ+fᵅᵠ;fʷ+fᵅʷ;fˢ;fᵐ]
-# push!(nodes_φ,:d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ])
-# push!(nodes_w,:d=>d[2*nᵠ+1:2*nᵠ+nʷ])
-# push!(nodes,:q₁=>d[2*nᵠ+nʷ+1:2:2*nᵠ+nʷ+2*nˢ], :q₂=>d[2*nᵠ+nʷ+2:2:2*nᵠ+nʷ+2*nˢ])
-# push!(nodes,:m₁₁=>d[2*nᵠ+nʷ+2*nˢ+1:3:end],:m₂₂=>d[2*nᵠ+nʷ+2*nˢ+2:3:end],:m₁₂=>d[2*nᵠ+nʷ+2*nˢ+3:3:end])
+@timeit to "solve" d = [kᵠᵠ+kᵅᵠᵠ kᵠʷ kˢᵠ' kᵐᵠ';kᵠʷ' kʷʷ+kᵅʷʷ kˢʷ' kᵐʷ';kˢᵠ kˢʷ kˢˢ kˢᵐ;kᵐᵠ kᵐʷ kˢᵐ' kᵐᵐ]\[fᵠ+fᵅᵠ;fʷ+fᵅʷ;fˢ;fᵐ]
+push!(nodes_φ,:d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ])
+push!(nodes_w,:d=>d[2*nᵠ+1:2*nᵠ+nʷ])
+push!(nodes,:q₁=>d[2*nᵠ+nʷ+1:2:2*nᵠ+nʷ+2*nˢ], :q₂=>d[2*nᵠ+nʷ+2:2:2*nᵠ+nʷ+2*nˢ])
+push!(nodes,:m₁₁=>d[2*nᵠ+nʷ+2*nˢ+1:3:end],:m₂₂=>d[2*nᵠ+nʷ+2*nˢ+2:3:end],:m₁₂=>d[2*nᵠ+nʷ+2*nˢ+3:3:end])
 # ──────────────────────────────────────────────────────────
-k = -[kˢᵠ'*(kˢˢ\kˢᵠ)+kᵐᵠ'*(kᵐᵐ\kᵐᵠ)-kᵅᵠᵠ kˢᵠ'*(kˢˢ\kˢʷ)+kᵐᵠ'*(kᵐᵐ\kᵐʷ); kˢʷ'*(kˢˢ\kˢᵠ)+kᵐʷ'*(kᵐᵐ\kᵐᵠ) kˢʷ'*(kˢˢ\kˢʷ)+kᵐʷ'*(kᵐᵐ\kᵐʷ)-kᵅʷʷ]
-f = [fᵠ - kˢᵠ' * (kˢˢ \ fˢ) - kᵐᵠ' * (kᵐᵐ \ fᵐ) + fᵅᵠ; fʷ - kˢʷ' * (kˢˢ \ fˢ) - kᵐʷ' * (kᵐᵐ \ fᵐ) + fᵅʷ]
+# k = -[kˢᵠ'*(kˢˢ\kˢᵠ)+kᵐᵠ'*(kᵐᵐ\kᵐᵠ)-kᵅᵠᵠ kˢᵠ'*(kˢˢ\kˢʷ)+kᵐᵠ'*(kᵐᵐ\kᵐʷ); kˢʷ'*(kˢˢ\kˢᵠ)+kᵐʷ'*(kᵐᵐ\kᵐᵠ) kˢʷ'*(kˢˢ\kˢʷ)+kᵐʷ'*(kᵐᵐ\kᵐʷ)-kᵅʷʷ]
+# f = [fᵠ - kˢᵠ' * (kˢˢ \ fˢ) - kᵐᵠ' * (kᵐᵐ \ fᵐ) + fᵅᵠ; fʷ - kˢʷ' * (kˢˢ \ fˢ) - kᵐʷ' * (kᵐᵐ \ fᵐ) + fᵅʷ]
 
-d = k \ f
-dᵠ = d[1:2*nᵠ]
-dʷ = d[2*nᵠ+1:2*nᵠ+nʷ]
-dˢ = kˢˢ \ (fˢ - kˢᵠ * dᵠ - kˢʷ * dʷ)
-dᵐ = kᵐᵐ \ (fᵐ - kᵐᵠ * dᵠ - kᵐʷ * dʷ)
+# d = k \ f
+# dᵠ = d[1:2*nᵠ]
+# dʷ = d[2*nᵠ+1:2*nᵠ+nʷ]
+# dˢ = kˢˢ \ (fˢ - kˢᵠ * dᵠ - kˢʷ * dʷ)
+# dᵐ = kᵐᵐ \ (fᵐ - kᵐᵠ * dᵠ - kᵐʷ * dʷ)
 
-push!(nodes_φ, :d₁ => dᵠ[1:2:2*nᵠ], :d₂ => dᵠ[2:2:2*nᵠ])
-push!(nodes_w, :d => dʷ)
-push!(nodes, :q₁ => dˢ[1:2:end], :q₂ => dˢ[2:2:end])
-push!(nodes, :m₁₁ => dᵐ[1:3:end], :m₂₂ => dᵐ[2:3:end], :m₁₂ => dᵐ[3:3:end])
+# push!(nodes_φ, :d₁ => dᵠ[1:2:2*nᵠ], :d₂ => dᵠ[2:2:2*nᵠ])
+# push!(nodes_w, :d => dʷ)
+# push!(nodes, :q₁ => dˢ[1:2:end], :q₂ => dˢ[2:2:end])
+# push!(nodes, :m₁₁ => dᵐ[1:3:end], :m₂₂ => dᵐ[2:3:end], :m₁₂ => dᵐ[3:3:end])
 # ──────────────────────────────────────────────────────────
 @timeit to "calculate error" begin
     @timeit to "get elements" elements_φ = getElements(nodes_φ, entities["Ω"], eval(type_φ), 10, sp_φ)
@@ -449,6 +450,13 @@ end
 println(to)
 
 println("h=$h,Dᵇ=$Dᵇ,Dˢ=$Dˢ,αʷ=$αʷ,αᵠ=$αᵠ,nᵠ=$nᵠ,nʷ=$nʷ,nˢ=$nˢ,nᵐ=$nᵐ")
+print("nˢ≤ᵠ:         ")
+n_diff = nᵠ-nˢ
+n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
+print("nʷ≤⌊[nˢ]⌋-1:  ")
+n = floor(0.5*((1+8*nˢ)^0.5-3))
+n_diff = 0.5*n*(n+1)-nʷ
+n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
 println("L₂ error of w: ", log10(L₂_w))
 println("L₂ error of φ: ", log10(L₂_φ))
 println("L₂ error of Q: ", log10(L₂_Q))
