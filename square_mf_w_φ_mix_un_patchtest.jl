@@ -5,6 +5,7 @@ import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ,
 using LinearAlgebra
 using TimerOutputs, WriteVTK, XLSX 
 import Gmsh: gmsh
+include("cal_area_support.jl")
 
 E = 10.92e6
 ν = 0.3
@@ -64,21 +65,21 @@ Q₂(x, y, z) = Dˢ * (w₂(x, y, z) - φ₂(x, y, z))
 # m₁(x, y, z) = M₁₁₁(x, y, z) + M₁₂₂(x, y, z) - Q₁(x, y, z)
 # m₂(x, y, z) = M₁₂₁(x, y, z) + M₂₂₂(x, y, z) - Q₂(x, y, z)
 
-# Γ¹: y=0,   n=(0,-1)
-M₁_Γ1(x,y,z) = -M₁₂(x,y,z)
-M₂_Γ1(x,y,z) = -M₂₂(x,y,z)
+# # Γ¹: y=0,   n=(0,-1)
+# M₁_Γ1(x,y,z) = -M₁₂(x,y,z)
+# M₂_Γ1(x,y,z) = -M₂₂(x,y,z)
 
-# Γ²: x=L,   n=(1, 0)
-M₁_Γ2(x,y,z) =  M₁₁(x,y,z)
-M₂_Γ2(x,y,z) =  M₁₂(x,y,z)
+# # Γ²: x=L,   n=(1, 0)
+# M₁_Γ2(x,y,z) =  M₁₁(x,y,z)
+# M₂_Γ2(x,y,z) =  M₁₂(x,y,z)
 
-# Γ³: y=L,   n=(0, 1)
-M₁_Γ3(x,y,z) =  M₁₂(x,y,z)
-M₂_Γ3(x,y,z) =  M₂₂(x,y,z)
+# # Γ³: y=L,   n=(0, 1)
+# M₁_Γ3(x,y,z) =  M₁₂(x,y,z)
+# M₂_Γ3(x,y,z) =  M₂₂(x,y,z)
 
-# Γ⁴: x=0,   n=(-1,0)
-M₁_Γ4(x,y,z) = -M₁₁(x,y,z)
-M₂_Γ4(x,y,z) = -M₁₂(x,y,z)
+# # Γ⁴: x=0,   n=(-1,0)
+# M₁_Γ4(x,y,z) = -M₁₁(x,y,z)
+# M₂_Γ4(x,y,z) = -M₁₂(x,y,z)
 
 const to = TimerOutput()
 
@@ -94,7 +95,7 @@ type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
 # type_M = :(PiecewisePolynomial{:Quadratic2D})
 ndiv_φ = 16
-ndiv_w = 17
+ndiv_w = 14
 ndiv = 16
 # for ndiv_w = 10:25
 # ndiv = ndiv_φ
@@ -107,29 +108,39 @@ sᵠ = 1.5
 # ─── Deflection W ─────────────────────────────────────────
 @timeit to "open msh file" gmsh.open("msh/patchtest_high_un_tri3_$ndiv_w.msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()
+@timeit to "get entities" entities_w = getPhysicalGroups()
 xʷ = nodes_w.x
 yʷ = nodes_w.y
 zʷ = nodes_w.z
 sp_w = RegularGrid(xʷ,yʷ,zʷ,n = 3,γ = 5)
 nʷ = length(nodes_w)
-s = 1/ndiv_w
-s₁ = sʷ * s * ones(nʷ)
-s₂ = sʷ * s * ones(nʷ)
-s₃ = sʷ * s * ones(nʷ)
-push!(nodes_w,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
+# s = 1/ndiv_w
+# s₁ = sʷ * s * ones(nʷ)
+# s₂ = sʷ * s * ones(nʷ)
+# s₃ = sʷ * s * ones(nʷ)
+# push!(nodes_w,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
+elements_support = getElements(nodes_w, entities_w["Ω"], 1)
+s_w, var_A = cal_area_support(elements_support)
+s = sʷ*s_w*ones(nʷ)
+push!(nodes_w, :s₁=>s, :s₂=>s, :s₃=>s)
 # ─── Rotation Φ ───────────────────────────────────────────
 @timeit to "open msh file" gmsh.open("msh/patchtest_high_un_tri3_$ndiv_φ.msh")
 @timeit to "get nodes" nodes_φ = get𝑿ᵢ()
+@timeit to "get entities" entities_φ = getPhysicalGroups()
 xᵠ = nodes_φ.x
 yᵠ = nodes_φ.y
 zᵠ = nodes_φ.z
 sp_φ = RegularGrid(xᵠ,yᵠ,zᵠ,n = 3,γ = 5)
 nᵠ = length(nodes_φ)
-s = 1/ndiv_φ
-s₁ = sᵠ * s * ones(nᵠ)
-s₂ = sᵠ * s * ones(nᵠ)
-s₃ = sᵠ * s * ones(nᵠ)
-push!(nodes_φ,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
+# s = 1/ndiv_φ
+# s₁ = sᵠ * s * ones(nᵠ)
+# s₂ = sᵠ * s * ones(nᵠ)
+# s₃ = sᵠ * s * ones(nᵠ)
+# push!(nodes_φ,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
+elements_support = getElements(nodes_φ, entities_φ["Ω"], 1)
+s_φ, var_A = cal_area_support(elements_support)
+s = sᵠ*s_φ*ones(nᵠ)
+push!(nodes_φ, :s₁=>s, :s₂=>s, :s₃=>s)
 # ─── Shear ────────────────────────────────────────────────
 @timeit to "open msh file" gmsh.open("msh/patchtest_high_un_tri3_$ndiv.msh")
 @timeit to "get nodes" nodes = get𝑿ᵢ()
@@ -214,7 +225,7 @@ fᵐ = zeros(3*nᵐ)
     # @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
-αʷ = 0e2*Dˢ
+αʷ = 0e1*Dˢ
 αᵠ = 0e1*Dᵇ
 # αʷ = 0e0*Dˢ;αᵠ = 0e13*Dᵇ;
 @timeit to "calculate ∫QwdΓ" begin
@@ -241,7 +252,7 @@ end
     𝑎 = ∫QwdΓ => (elements_q_1 ∪ elements_q_2 ∪ elements_q_3 ∪ elements_q_4, elements_w_1 ∪ elements_w_2 ∪ elements_w_3 ∪ elements_w_4)
     𝑎ʷ = ∫αwwdΓ => elements_w_1 ∪ elements_w_2 ∪ elements_w_3 ∪ elements_w_4
     @timeit to "assemble" 𝑎(kˢʷ,fˢ)
-    # @timeit to "assemble" 𝑎ʷ(kᵅʷʷ, fᵅʷ)
+    @timeit to "assemble" 𝑎ʷ(kᵅʷʷ, fᵅʷ)
 end
 
 @timeit to "calculate ∫MφdΓ" begin
@@ -265,28 +276,28 @@ end
     
     𝑎ᵅ = ∫αφφdΓ => elements_φ_1 ∪ elements_φ_2 ∪ elements_φ_3 ∪ elements_φ_4
     @timeit to "assemble" 𝑎(kᵐᵠ,fᵐ)
-    # @timeit to "assemble" 𝑎ᵅ(kᵅᵠᵠ, fᵅᵠ)
+    @timeit to "assemble" 𝑎ᵅ(kᵅᵠᵠ, fᵅᵠ)
 end
 
-@timeit to "calculate ∫MφdΓ" begin
-    @timeit to "get elements" elements_φ_1 = getElements(nodes_φ, entities["Γ¹"], eval(type_φ), integrationOrder, sp_φ, normal=true)
-    @timeit to "get elements" elements_φ_2 = getElements(nodes_φ, entities["Γ²"], eval(type_φ), integrationOrder, sp_φ, normal=true)
-    @timeit to "get elements" elements_φ_3 = getElements(nodes_φ, entities["Γ³"], eval(type_φ), integrationOrder, sp_φ, normal=true)
-    @timeit to "get elements" elements_φ_4 = getElements(nodes_φ, entities["Γ⁴"], eval(type_φ), integrationOrder, sp_φ, normal=true)
+# @timeit to "calculate ∫MφdΓ" begin
+#     @timeit to "get elements" elements_φ_1 = getElements(nodes_φ, entities["Γ¹"], eval(type_φ), integrationOrder, sp_φ, normal=true)
+#     @timeit to "get elements" elements_φ_2 = getElements(nodes_φ, entities["Γ²"], eval(type_φ), integrationOrder, sp_φ, normal=true)
+#     @timeit to "get elements" elements_φ_3 = getElements(nodes_φ, entities["Γ³"], eval(type_φ), integrationOrder, sp_φ, normal=true)
+#     @timeit to "get elements" elements_φ_4 = getElements(nodes_φ, entities["Γ⁴"], eval(type_φ), integrationOrder, sp_φ, normal=true)
 
-    prescribe!(elements_φ_1, :α=>αᵠ)
-    prescribe!(elements_φ_2, :α=>αᵠ)
-    prescribe!(elements_φ_3, :α=>αᵠ)
-    prescribe!(elements_φ_4, :α=>αᵠ)
+#     prescribe!(elements_φ_1, :α=>αᵠ)
+#     prescribe!(elements_φ_2, :α=>αᵠ)
+#     prescribe!(elements_φ_3, :α=>αᵠ)
+#     prescribe!(elements_φ_4, :α=>αᵠ)
 
-    @timeit to "calculate shape functions" set𝝭!(elements_φ_1)
-    @timeit to "calculate shape functions" set𝝭!(elements_φ_2)
-    @timeit to "calculate shape functions" set𝝭!(elements_φ_3)
-    @timeit to "calculate shape functions" set𝝭!(elements_φ_4)
+#     @timeit to "calculate shape functions" set𝝭!(elements_φ_1)
+#     @timeit to "calculate shape functions" set𝝭!(elements_φ_2)
+#     @timeit to "calculate shape functions" set𝝭!(elements_φ_3)
+#     @timeit to "calculate shape functions" set𝝭!(elements_φ_4)
 
-    𝑓ᴹ = ∫φMdΓ => (elements_φ_1 ∪ elements_φ_2 ∪ elements_φ_3 ∪ elements_φ_4)
+#     𝑓ᴹ = ∫φMdΓ => (elements_φ_1 ∪ elements_φ_2 ∪ elements_φ_3 ∪ elements_φ_4)
     # @timeit to "assemble" 𝑓ᴹ(fᵠ)
-end
+# end
 # ──────────────────────────────────────────────────────────
 # dᵠ = zeros(2*nᵠ)
 # dʷ = zeros(nʷ)

@@ -1,3 +1,4 @@
+using Statistics
 function cal_area_support(elms::Vector{ApproxOperator.AbstractElement})
     𝐴s = zeros(length(elms))
     for (i, elm) in enumerate(elms)

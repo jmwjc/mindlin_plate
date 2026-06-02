@@ -4,7 +4,7 @@ import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫Q∇wdΩ, ∫∇Qwd
 
 using TimerOutputs, WriteVTK, XLSX 
 import Gmsh: gmsh
-
+include("cal_area_support.jl")
 # E = 1.0
 # ν = 0.3
 # h = 1e-8
