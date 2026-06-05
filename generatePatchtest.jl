@@ -5,13 +5,18 @@ import BenchmarkExample: PatchTest
 #     PatchTest.generateMsh("msh/patchtest_tri6_$n.msh", transfinite=n+1, order=2, quad=false)
 # end
 
-# for n in 2:25
+# for n in 2:3
 #     PatchTest.generateMsh("msh/patchtest_quad4_$n.msh", transfinite=n+1, order=1, quad=true)
 #     PatchTest.generateMsh("msh/patchtest_quad8_$n.msh", transfinite=n+1, order=2, quad=true)
 # end
 
-for n in 2:32
-    PatchTest.generateMsh("msh/patchtest_high_un_tri3_$n.msh", lc = 1/(n-1), order=1, quad=false)
+# for n in 2:32
+#     PatchTest.generateMsh("msh/patchtest_high_un_tri3_$n.msh", lc = 1/(n-1), order=1, quad=false)
+# end
+
+for n in 3:32
+    PatchTest.generateMsh("msh/patchtest_un_quad4_$n.msh", lc = 1/(n-1), order=1, quad=true)
+    # PatchTest.generateMsh("msh/patchtest_quad8_$n.msh", transfinite=n+1, order=2, quad=true)
 end
 
 # ---------------------------------------------------------------------------------------------------------

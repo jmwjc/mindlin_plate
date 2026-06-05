@@ -6,6 +6,7 @@ using LinearAlgebra
 using TimerOutputs, WriteVTK, XLSX 
 import Gmsh: gmsh
 
+include("cal_area_support.jl")
 E = 10.92e6
 ν = 0.3
 h = 1e-3
@@ -18,10 +19,10 @@ w₂(x,y,z) = (x-1)^3*x^3*(y-1)^2*y^2*(2*y-1)-2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2
 φ₁(x,y,z) = y^3*(y-1)^3*x^2*(x-1)^2*(2*x-1)
 φ₂(x,y,z) = x^3*(x-1)^3*y^2*(y-1)^2*(2*y-1)
 # ──────────────────────────────────────────────────────────
-φ₁₁(x,y,z) = y^3*(y-1)^3 * (2*x*(x-1)*(2*x-1)^2 + 2*x^2*(x-1)^2)
-φ₁₂(x,y,z) = 3*y^2*(y-1)^2*(2*y-1) * (x^2*(x-1)^2*(2*x-1))
-φ₂₁(x,y,z) = 3*x^2*(x-1)^2*(2*x-1) * (y^2*(y-1)^2*(2*y-1))
-φ₂₂(x,y,z) = x^3*(x-1)^3 * (2*y*(y-1)*(2*y-1)^2 + 2*y^2*(y-1)^2)
+# φ₁₁(x,y,z) = y^3*(y-1)^3 * (2*x*(x-1)*(2*x-1)^2 + 2*x^2*(x-1)^2)
+# φ₁₂(x,y,z) = 3*y^2*(y-1)^2*(2*y-1) * (x^2*(x-1)^2*(2*x-1))
+# φ₂₁(x,y,z) = 3*x^2*(x-1)^2*(2*x-1) * (y^2*(y-1)^2*(2*y-1))
+# φ₂₂(x,y,z) = x^3*(x-1)^3 * (2*y*(y-1)*(2*y-1)^2 + 2*y^2*(y-1)^2)
 # ──────────────────────────────────────────────────────────
 q(x,y,z) = E*h^3/(12*(1-ν^2))*(12*y*(y-1)*(5*x^2-5*x+1)*(2*y^2*(y-1)^2+x*(x-1)*(5*y^2-5*y+1))+12*x*(x-1)*(5*y^2-5*y+1)*(2*x^2*(x-1)^2+y*(y-1)*(5*x^2-5*x+1)))
 
@@ -51,36 +52,47 @@ ndiv_w = 14
 ndiv = 16
 sʷ = 1.5
 sᵠ = 1.5
- XLSX.openxlsx("xls/square_$(ndiv_φ)_tri3_$(ndiv_w)_0.xlsx", mode="w") do xf
+# for ndiv_w = 10:25
+ XLSX.openxlsx("xls/square_$(ndiv_φ)_tri3_$(ndiv_w).xlsx", mode="w") do xf
 # for ndiv = ndiv_w-2:32
  # ndiv_w = ndiv
  row = ndiv
 # ─── Deflection W ─────────────────────────────────────────
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()
+@timeit to "get entities" entities_w = getPhysicalGroups()
 xʷ = nodes_w.x
 yʷ = nodes_w.y
 zʷ = nodes_w.z
 sp_w = RegularGrid(xʷ,yʷ,zʷ,n = 3,γ = 5)
 nʷ = length(nodes_w)
-s = 1/ndiv_w
-s₁ = sʷ * s * ones(nʷ)
-s₂ = sʷ * s * ones(nʷ)
-s₃ = sʷ * s * ones(nʷ)
-push!(nodes_w,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
+# s = 1/ndiv_w
+# s₁ = sʷ * s * ones(nʷ)
+# s₂ = sʷ * s * ones(nʷ)
+# s₃ = sʷ * s * ones(nʷ)
+# push!(nodes_w,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
+elements_support = getElements(nodes_w, entities_w["Ω"], 1)
+s_w, var_A = cal_area_support(elements_support)
+s = sʷ*s_w*ones(nʷ)
+push!(nodes_w, :s₁=>s, :s₂=>s, :s₃=>s)
 # ─── Rotation Φ ───────────────────────────────────────────
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_φ.msh")
 @timeit to "get nodes" nodes_φ = get𝑿ᵢ()
+@timeit to "get entities" entities_φ = getPhysicalGroups()
 xᵠ = nodes_φ.x
 yᵠ = nodes_φ.y
 zᵠ = nodes_φ.z
 sp_φ = RegularGrid(xᵠ,yᵠ,zᵠ,n = 3,γ = 5)
 nᵠ = length(nodes_φ)
-s = 1/ndiv_φ
-s₁ = sᵠ * s * ones(nᵠ)
-s₂ = sᵠ * s * ones(nᵠ)
-s₃ = sᵠ * s * ones(nᵠ)
-push!(nodes_φ,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
+# s = 1/ndiv_φ
+# s₁ = sᵠ * s * ones(nᵠ)
+# s₂ = sᵠ * s * ones(nᵠ)
+# s₃ = sᵠ * s * ones(nᵠ)
+# push!(nodes_φ,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
+elements_support = getElements(nodes_φ, entities_φ["Ω"], 1)
+s_φ, var_A = cal_area_support(elements_support)
+s = sᵠ*s_φ*ones(nᵠ)
+push!(nodes_φ, :s₁=>s, :s₂=>s, :s₃=>s)
 # ─── Shear ────────────────────────────────────────────────
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv.msh")
 # @timeit to "open msh file" gmsh.open("msh/patchtest_high_un_tri3_$ndiv.msh")
@@ -192,28 +204,28 @@ end
     @timeit to "assemble" 𝑎ʷ(kᵅʷʷ, fᵅʷ)
 end
 
-@timeit to "calculate ∫MφdΓ" begin
-    @timeit to "get elements" elements_m_1 = getElements(entities["Γ¹"], entities["Γ"], elements_m_Γ)
-    @timeit to "get elements" elements_m_2 = getElements(entities["Γ²"], entities["Γ"], elements_m_Γ)
-    @timeit to "get elements" elements_m_3 = getElements(entities["Γ³"], entities["Γ"], elements_m_Γ)
-    @timeit to "get elements" elements_m_4 = getElements(entities["Γ⁴"], entities["Γ"], elements_m_Γ)
-    @timeit to "get elements" elements_φ_1 = getElements(nodes_φ, entities["Γ¹"], eval(type_φ), integrationOrder, sp_φ, normal=true)
-    @timeit to "get elements" elements_φ_2 = getElements(nodes_φ, entities["Γ²"], eval(type_φ), integrationOrder, sp_φ, normal=true)
-    @timeit to "get elements" elements_φ_3 = getElements(nodes_φ, entities["Γ³"], eval(type_φ), integrationOrder, sp_φ, normal=true)
-    @timeit to "get elements" elements_φ_4 = getElements(nodes_φ, entities["Γ⁴"], eval(type_φ), integrationOrder, sp_φ, normal=true)
-    prescribe!(elements_φ_1, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-    prescribe!(elements_φ_2, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-    prescribe!(elements_φ_3, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-    prescribe!(elements_φ_4, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-    @timeit to "calculate shape functions" set𝝭!(elements_φ_1)
-    @timeit to "calculate shape functions" set𝝭!(elements_φ_2)
-    @timeit to "calculate shape functions" set𝝭!(elements_φ_3)
-    @timeit to "calculate shape functions" set𝝭!(elements_φ_4)
-    𝑎 = ∫MφdΓ => (elements_m_1 ∪ elements_m_2 ∪ elements_m_3 ∪ elements_m_4, elements_φ_1 ∪ elements_φ_2 ∪ elements_φ_3 ∪ elements_φ_4)
-    𝑎ᵅ = ∫αφφdΓ => elements_φ_1 ∪ elements_φ_2 ∪ elements_φ_3 ∪ elements_φ_4
-    @timeit to "assemble" 𝑎(kᵐᵠ,fᵐ)
-    @timeit to "assemble" 𝑎ᵅ(kᵅᵠᵠ, fᵅᵠ)
-end
+# @timeit to "calculate ∫MφdΓ" begin
+#     @timeit to "get elements" elements_m_1 = getElements(entities["Γ¹"], entities["Γ"], elements_m_Γ)
+#     @timeit to "get elements" elements_m_2 = getElements(entities["Γ²"], entities["Γ"], elements_m_Γ)
+#     @timeit to "get elements" elements_m_3 = getElements(entities["Γ³"], entities["Γ"], elements_m_Γ)
+#     @timeit to "get elements" elements_m_4 = getElements(entities["Γ⁴"], entities["Γ"], elements_m_Γ)
+#     @timeit to "get elements" elements_φ_1 = getElements(nodes_φ, entities["Γ¹"], eval(type_φ), integrationOrder, sp_φ, normal=true)
+#     @timeit to "get elements" elements_φ_2 = getElements(nodes_φ, entities["Γ²"], eval(type_φ), integrationOrder, sp_φ, normal=true)
+#     @timeit to "get elements" elements_φ_3 = getElements(nodes_φ, entities["Γ³"], eval(type_φ), integrationOrder, sp_φ, normal=true)
+#     @timeit to "get elements" elements_φ_4 = getElements(nodes_φ, entities["Γ⁴"], eval(type_φ), integrationOrder, sp_φ, normal=true)
+#     prescribe!(elements_φ_1, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+#     prescribe!(elements_φ_2, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+#     prescribe!(elements_φ_3, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+#     prescribe!(elements_φ_4, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+#     @timeit to "calculate shape functions" set𝝭!(elements_φ_1)
+#     @timeit to "calculate shape functions" set𝝭!(elements_φ_2)
+#     @timeit to "calculate shape functions" set𝝭!(elements_φ_3)
+#     @timeit to "calculate shape functions" set𝝭!(elements_φ_4)
+#     𝑎 = ∫MφdΓ => (elements_m_1 ∪ elements_m_2 ∪ elements_m_3 ∪ elements_m_4, elements_φ_1 ∪ elements_φ_2 ∪ elements_φ_3 ∪ elements_φ_4)
+#     𝑎ᵅ = ∫αφφdΓ => elements_φ_1 ∪ elements_φ_2 ∪ elements_φ_3 ∪ elements_φ_4
+#     @timeit to "assemble" 𝑎(kᵐᵠ,fᵐ)
+#     @timeit to "assemble" 𝑎ᵅ(kᵅᵠᵠ, fᵅᵠ)
+# end
 
 # ──────────────────────────────────────────────────────────
 # dᵠ = zeros(2*nᵠ)
@@ -310,7 +322,14 @@ end
 
 println(to)
 
-println("h=$h,αʷ=$αʷ,αᵠ=$αᵠ,nᵠ=$nᵠ,nʷ=$nʷ,nˢ=$nˢ,nᵐ=$nᵐ")
+println("h=$h,Dᵇ=$Dᵇ,Dˢ=$Dˢ,αʷ=$αʷ,αᵠ=$αᵠ,nᵠ=$nᵠ,nʷ=$nʷ,nˢ=$nˢ,nᵐ=$nᵐ")
+print("nˢ≤ᵠ:         ")
+n_diff = nᵠ-nˢ
+n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
+print("nʷ≤⌊[nˢ]⌋-1:  ")
+n = floor(0.5*((1+8*nˢ)^0.5-3))
+n_diff = 0.5*n*(n+1)-nʷ
+n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
 println("L₂ error of w: ", log10(L₂_w))
 println("L₂ error of φ: ", log10(L₂_φ))
 println("L₂ error of Q: ", log10(L₂_Q))
