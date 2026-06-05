@@ -8,7 +8,7 @@ import Gmsh: gmsh
 
 E = 10.92e6
 ν = 0.3
-h = 1e-0
+h = 1e-3
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -197,7 +197,7 @@ fᵐ = zeros(3*nᵐ)
     # @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
-αʷ = 0e1;αᵠ = 0e1;
+αʷ = 0e2;αᵠ = 1e3;
 
 @timeit to "calculate ∫QwdΓ" begin
     @timeit to "get elements" elements_q_1 = getElements(nodes, entities["Γ¹"], integrationOrder, normal=true)
@@ -306,7 +306,7 @@ end
 # println(kˢᵠ*dᵠ+kˢʷ*dʷ+kˢˢ*dˢ+kˢᵐ*dᵐ - fˢ)
 # println(kᵐᵠ*dᵠ+kᵐʷ*dʷ+kˢᵐ'*dˢ+kᵐᵐ*dᵐ - fᵐ)
 # ──────────────────────────────────────────────────────────
-@timeit to "solve" d = [kᵠᵠ kᵠʷ kˢᵠ' kᵐᵠ';kᵠʷ' kʷʷ kˢʷ' kᵐʷ';kˢᵠ kˢʷ kˢˢ kˢᵐ;kᵐᵠ kᵐʷ kˢᵐ' kᵐᵐ]\[fᵠ;fʷ;fˢ;fᵐ]
+@timeit to "solve" d = [kᵠᵠ+kᵅᵠᵠ kᵠʷ kˢᵠ' kᵐᵠ';kᵠʷ' kʷʷ+kᵅʷʷ kˢʷ' kᵐʷ';kˢᵠ kˢʷ kˢˢ kˢᵐ;kᵐᵠ kᵐʷ kˢᵐ' kᵐᵐ]\[fᵠ;fʷ;fˢ;fᵐ]
 push!(nodes_φ,:d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ])
 push!(nodes_w,:d=>d[2*nᵠ+1:2*nᵠ+nʷ])
 push!(nodes,:q₁=>d[2*nᵠ+nʷ+1:2:2*nᵠ+nʷ+2*nˢ], :q₂=>d[2*nᵠ+nʷ+2:2:2*nᵠ+nʷ+2*nˢ])
@@ -363,9 +363,13 @@ end
 #     vtk["Q̄₂"] = [Q₂(node.x,node.y,node.z) for node in nodes_q]
 # end
 
-println(to)
+# println(to)
 
-println("h=$h,αʷ=$αʷ,αᵠ=$αᵠ,nᵠ=$nᵠ,nʷ=$nʷ,nˢ=$nˢ,nᵐ=$nᵐ")
+print("Q₁:")
+println(Q₁(rand(),rand(),0.0))
+print("Q₂:")
+println(Q₂(rand(),rand(),0.0))
+println("h=$h,αʷ=$αʷ,αᵠ=$αᵠ,Dˢ=$Dˢ,Dᵇ=$Dᵇ,nᵠ=$nᵠ,nʷ=$nʷ,nˢ=$nˢ,nᵐ=$nᵐ")
 println("L₂ error of w: ", log10(L₂_w))
 println("L₂ error of φ: ", log10(L₂_φ))
 println("L₂ error of Q: ", log10(L₂_Q))

@@ -9,7 +9,7 @@ include("cal_area_support.jl")
 
 E = 10.92e6
 ν = 0.3
-h = 1e-6
+h = 1e-3
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -49,9 +49,9 @@ q(x,y,z) = E*h^3/(12*(1-ν^2))*(12*y*(y-1)*(5*x^2-5*x+1)*(2*y^2*(y-1)^2+x*(x-1)*
 # φ₁₂₁(x, y, z) = 0.0
 # φ₁₂₂(x, y, z) = 0.0
 
-# M₁₁(x, y, z) = -Dᵇ * (φ₁₁(x, y, z) + ν * φ₂₂(x, y, z))
-# M₁₂(x, y, z) = -Dᵇ * (1 - ν) * 0.5 * (φ₁₂(x, y, z) + φ₂₁(x, y, z))
-# M₂₂(x, y, z) = -Dᵇ * (ν * φ₁₁(x, y, z) + φ₂₂(x, y, z))
+M₁₁(x, y, z) = -Dᵇ * (φ₁₁(x, y, z) + ν * φ₂₂(x, y, z))
+M₁₂(x, y, z) = -Dᵇ * (1 - ν) * 0.5 * (φ₁₂(x, y, z) + φ₂₁(x, y, z))
+M₂₂(x, y, z) = -Dᵇ * (ν * φ₁₁(x, y, z) + φ₂₂(x, y, z))
 # M₁₁₁(x, y, z) = -Dᵇ * (φ₁₁₁(x, y, z) + ν * φ₂₂₁(x, y, z))
 # M₁₂₂(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₂(x, y, z)
 # M₁₂₁(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₁(x, y, z)
@@ -95,7 +95,7 @@ type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
 # type_M = :(PiecewisePolynomial{:Quadratic2D})
 ndiv_φ = 16
-ndiv_w = 14
+ndiv_w = 16
 ndiv = 16
 # for ndiv_w = 10:25
 # ndiv = ndiv_φ
@@ -225,8 +225,8 @@ fᵐ = zeros(3*nᵐ)
     # @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
-αʷ = 0e1*Dˢ
-αᵠ = 0e1*Dᵇ
+αʷ = -0e0*Dˢ
+αᵠ = 0e2*Dᵇ
 # αʷ = 0e0*Dˢ;αᵠ = 0e13*Dᵇ;
 @timeit to "calculate ∫QwdΓ" begin
     @timeit to "get elements" elements_q_1 = getElements(nodes, entities["Γ¹"], integrationOrder, normal=true)
@@ -458,8 +458,12 @@ end
 #     # vtk["q̄ᵣ"] = [Qᵣ(node.x,node.y,node.z) for node in nodes]
 # end
 # ──────────────────────────────────────────────────────────
-println(to)
+# println(to)
 
+print("Q₁:")
+println(Q₁(rand(),rand(),0.0))
+print("Q₂:")
+println(Q₂(rand(),rand(),0.0))
 println("h=$h,Dᵇ=$Dᵇ,Dˢ=$Dˢ,αʷ=$αʷ,αᵠ=$αᵠ,nᵠ=$nᵠ,nʷ=$nʷ,nˢ=$nˢ,nᵐ=$nᵐ")
 print("nˢ≤ᵠ:         ")
 n_diff = nᵠ-nˢ
