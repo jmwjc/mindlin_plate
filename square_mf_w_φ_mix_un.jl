@@ -6,9 +6,10 @@ using LinearAlgebra
 using TimerOutputs, WriteVTK, XLSX 
 import Gmsh: gmsh
 
+include("cal_area_support.jl")
 E = 10.92e6
 ν = 0.3
-h = 1e-0
+h = 1e-6
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -19,16 +20,16 @@ w₂(x,y,z) = (x-1)^3*x^3*(y-1)^2*y^2*(2*y-1)-2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2
 φ₂(x,y,z) = x^3*(x-1)^3*y^2*(y-1)^2*(2*y-1)
 
 # ──────────────────────────────────────────────────────────
-φ₁₁(x,y,z) = y^3*(y-1)^3 * (2*x*(x-1)*(2*x-1)^2 + 2*x^2*(x-1)^2)
-φ₁₂(x,y,z) = 3*y^2*(y-1)^2*(2*y-1) * (x^2*(x-1)^2*(2*x-1))
-φ₂₁(x,y,z) = 3*x^2*(x-1)^2*(2*x-1) * (y^2*(y-1)^2*(2*y-1))
-φ₂₂(x,y,z) = x^3*(x-1)^3 * (2*y*(y-1)*(2*y-1)^2 + 2*y^2*(y-1)^2)
-φ₁₁₁(x,y,z) = y^3*(y-1)^3 * ( 2*(2*x-1) * ( (2*x-1)^2 + 6*x*(x-1) ) )
-φ₁₁₂(x,y,z) = 3*y^2*(y-1)^2*(2*y-1) * ( 2*x*(x-1)*(2*x-1)^2 + 2*x^2*(x-1)^2 )
-φ₁₂₁(x,y,z) = 3*y^2*(y-1)^2*(2*y-1) * ( 2*x*(x-1)*(2*x-1)^2 + 2*x^2*(x-1)^2 )
-φ₁₂₂(x,y,z) = ( 6*y*(y-1) * ( (2*y-1)^2 + y*(y-1) ) ) * ( x^2*(x-1)^2*(2*x-1) )
-φ₂₂₁(x,y,z) = 3*x^2*(x-1)^2*(2*x-1) * ( 2*y*(y-1)*(2*y-1)^2 + 2*y^2*(y-1)^2 )
-φ₂₂₂(x,y,z) = x^3*(x-1)^3 * ( 2*(2*y-1) * ( (2*y-1)^2 + 6*y*(y-1) ) )
+# φ₁₁(x,y,z) = y^3*(y-1)^3 * (2*x*(x-1)*(2*x-1)^2 + 2*x^2*(x-1)^2)
+# φ₁₂(x,y,z) = 3*y^2*(y-1)^2*(2*y-1) * (x^2*(x-1)^2*(2*x-1))
+# φ₂₁(x,y,z) = 3*x^2*(x-1)^2*(2*x-1) * (y^2*(y-1)^2*(2*y-1))
+# φ₂₂(x,y,z) = x^3*(x-1)^3 * (2*y*(y-1)*(2*y-1)^2 + 2*y^2*(y-1)^2)
+# φ₁₁₁(x,y,z) = y^3*(y-1)^3 * ( 2*(2*x-1) * ( (2*x-1)^2 + 6*x*(x-1) ) )
+# φ₁₁₂(x,y,z) = 3*y^2*(y-1)^2*(2*y-1) * ( 2*x*(x-1)*(2*x-1)^2 + 2*x^2*(x-1)^2 )
+# φ₁₂₁(x,y,z) = 3*y^2*(y-1)^2*(2*y-1) * ( 2*x*(x-1)*(2*x-1)^2 + 2*x^2*(x-1)^2 )
+# φ₁₂₂(x,y,z) = ( 6*y*(y-1) * ( (2*y-1)^2 + y*(y-1) ) ) * ( x^2*(x-1)^2*(2*x-1) )
+# φ₂₂₁(x,y,z) = 3*x^2*(x-1)^2*(2*x-1) * ( 2*y*(y-1)*(2*y-1)^2 + 2*y^2*(y-1)^2 )
+# φ₂₂₂(x,y,z) = x^3*(x-1)^3 * ( 2*(2*y-1) * ( (2*y-1)^2 + 6*y*(y-1) ) )
 # ──────────────────────────────────────────────────────────
 
 q(x,y,z) = E*h^3/(12*(1-ν^2))*(12*y*(y-1)*(5*x^2-5*x+1)*(2*y^2*(y-1)^2+x*(x-1)*(5*y^2-5*y+1))+12*x*(x-1)*(5*y^2-5*y+1)*(2*x^2*(x-1)^2+y*(y-1)*(5*x^2-5*x+1)))
@@ -41,29 +42,29 @@ M₁₂(x,y,z)= -Dᵇ*(1-ν)*0.5*(φ₁₂(x,y,z)+φ₂₁(x,y,z))
 M₂₂(x,y,z)= -Dᵇ*(ν*φ₁₁(x,y,z)+φ₂₂(x,y,z))
 
 # ──────────────────────────────────────────────────────────
-M₁₁₁(x, y, z) = -Dᵇ * (φ₁₁₁(x, y, z) + ν * φ₂₂₁(x, y, z))
-M₁₂₂(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₂(x, y, z)
-M₁₂₁(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₁(x, y, z)
-M₂₂₂(x, y, z) = -Dᵇ * (ν * φ₁₁₂(x, y, z) + φ₂₂₂(x, y, z))
+# M₁₁₁(x, y, z) = -Dᵇ * (φ₁₁₁(x, y, z) + ν * φ₂₂₁(x, y, z))
+# M₁₂₂(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₂(x, y, z)
+# M₁₂₁(x, y, z) = -Dᵇ * (1 - ν) * φ₁₂₁(x, y, z)
+# M₂₂₂(x, y, z) = -Dᵇ * (ν * φ₁₁₂(x, y, z) + φ₂₂₂(x, y, z))
 
-# Γ¹: y=0,   n=(0,-1)
-M₁_Γ1(x,y,z) = -M₁₂(x,y,z)
-M₂_Γ1(x,y,z) = -M₂₂(x,y,z)
+# # Γ¹: y=0,   n=(0,-1)
+# M₁_Γ1(x,y,z) = -M₁₂(x,y,z)
+# M₂_Γ1(x,y,z) = -M₂₂(x,y,z)
 
-# Γ²: x=L,   n=(1, 0)
-M₁_Γ2(x,y,z) =  M₁₁(x,y,z)
-M₂_Γ2(x,y,z) =  M₁₂(x,y,z)
+# # Γ²: x=L,   n=(1, 0)
+# M₁_Γ2(x,y,z) =  M₁₁(x,y,z)
+# M₂_Γ2(x,y,z) =  M₁₂(x,y,z)
 
-# Γ³: y=L,   n=(0, 1)
-M₁_Γ3(x,y,z) =  M₁₂(x,y,z)
-M₂_Γ3(x,y,z) =  M₂₂(x,y,z)
+# # Γ³: y=L,   n=(0, 1)
+# M₁_Γ3(x,y,z) =  M₁₂(x,y,z)
+# M₂_Γ3(x,y,z) =  M₂₂(x,y,z)
 
-# Γ⁴: x=0,   n=(-1,0)
-M₁_Γ4(x,y,z) = -M₁₁(x,y,z)
-M₂_Γ4(x,y,z) = -M₁₂(x,y,z)
+# # Γ⁴: x=0,   n=(-1,0)
+# M₁_Γ4(x,y,z) = -M₁₁(x,y,z)
+# M₂_Γ4(x,y,z) = -M₁₂(x,y,z)
 
-m₁(x, y, z) = M₁₁₁(x, y, z) + M₁₂₂(x, y, z) - Q₁(x, y, z)
-m₂(x, y, z) = M₁₂₁(x, y, z) + M₂₂₂(x, y, z) - Q₂(x, y, z)
+# m₁(x, y, z) = M₁₁₁(x, y, z) + M₁₂₂(x, y, z) - Q₁(x, y, z)
+# m₂(x, y, z) = M₁₂₁(x, y, z) + M₂₂₂(x, y, z) - Q₂(x, y, z)
 # ──────────────────────────────────────────────────────────
 const to = TimerOutput()
 
@@ -78,44 +79,56 @@ type_φ = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
 # type_M = :(PiecewisePolynomial{:Quadratic2D})
-ndiv_φ = 16
-ndiv_w = 14
+c1=2
+c2=3
+ndiv_φ = 8
+ndiv_w = 6
 ndiv = ndiv_φ
 # for ndiv_w = 10:25
 sʷ = 1.5
 sᵠ = 1.5
- XLSX.openxlsx("xls/square_un_$(ndiv_φ)_tri3_$(ndiv_w).xlsx", mode="w") do xf
+ XLSX.openxlsx("xls/square_un_$(ndiv_φ)_tri3_$(ndiv_w)_$(c1)_$(c2).xlsx", mode="w") do xf
 # for ndiv = ndiv_w-2:32
  # ndiv_w = ndiv
  row = ndiv
 # ─── Deflection W ─────────────────────────────────────────
-@timeit to "open msh file" gmsh.open("msh/patchtest_high_un_tri3_$ndiv_w.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_high_un_tri3_$(ndiv_w)_$(c1).msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()
+@timeit to "get entities" entities_w = getPhysicalGroups()
 xʷ = nodes_w.x
 yʷ = nodes_w.y
 zʷ = nodes_w.z
 sp_w = RegularGrid(xʷ,yʷ,zʷ,n = 3,γ = 5)
 nʷ = length(nodes_w)
-s = 1/ndiv_w
-s₁ = sʷ * s * ones(nʷ)
-s₂ = sʷ * s * ones(nʷ)
-s₃ = sʷ * s * ones(nʷ)
-push!(nodes_w,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
+# s = 1/ndiv_w
+# s₁ = sʷ * s * ones(nʷ)
+# s₂ = sʷ * s * ones(nʷ)
+# s₃ = sʷ * s * ones(nʷ)
+# push!(nodes_w,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
+elements_support = getElements(nodes_w, entities_w["Ω"], 1)
+s_w, var_A = cal_area_support(elements_support)
+s = sʷ*s_w*ones(nʷ)
+push!(nodes_w, :s₁=>s, :s₂=>s, :s₃=>s)
 # ─── Rotation Φ ───────────────────────────────────────────
-@timeit to "open msh file" gmsh.open("msh/patchtest_high_un_tri3_$ndiv_φ.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_high_un_tri3_$(ndiv_φ)_$(c2).msh")
 @timeit to "get nodes" nodes_φ = get𝑿ᵢ()
+@timeit to "get entities" entities_φ = getPhysicalGroups()
 xᵠ = nodes_φ.x
 yᵠ = nodes_φ.y
 zᵠ = nodes_φ.z
 sp_φ = RegularGrid(xᵠ,yᵠ,zᵠ,n = 3,γ = 5)
 nᵠ = length(nodes_φ)
-s = 1/ndiv_φ
-s₁ = sᵠ * s * ones(nᵠ)
-s₂ = sᵠ * s * ones(nᵠ)
-s₃ = sᵠ * s * ones(nᵠ)
-push!(nodes_φ,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
+# s = 1/ndiv_φ
+# s₁ = sᵠ * s * ones(nᵠ)
+# s₂ = sᵠ * s * ones(nᵠ)
+# s₃ = sᵠ * s * ones(nᵠ)
+# push!(nodes_φ,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
+elements_support = getElements(nodes_φ, entities_φ["Ω"], 1)
+s_φ, var_A = cal_area_support(elements_support)
+s = sᵠ*s_φ*ones(nᵠ)
+push!(nodes_φ, :s₁=>s, :s₂=>s, :s₃=>s)
 # ─── Shear ────────────────────────────────────────────────
-@timeit to "open msh file" gmsh.open("msh/patchtest_high_un_tri3_$ndiv.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_high_un_tri3_$(ndiv)_$(c2).msh")
 @timeit to "get nodes" nodes = get𝑿ᵢ()
 @timeit to "get entities" entities = getPhysicalGroups()
 
@@ -149,6 +162,7 @@ fᵅʷ = zeros(nʷ)
     @timeit to "get elements" elements_q_Γ = getElements(nodes, entities["Γ"], integrationOrder, normal=true)
     @timeit to "calculate shape functions" set𝝭!(elements_q_Γ)
  
+
     𝑎ˢˢ = ∫QQdΩ=>elements_q
     𝑎ˢʷ = [
         ∫∇QwdΩ=>(elements_q,elements_w),
@@ -177,6 +191,7 @@ fᵐ = zeros(3*nᵐ)
     prescribe!(elements_φ, :E=>E, :ν=>ν, :h=>h)
     @timeit to "calculate shape functions" set𝝭!(elements_φ)
 
+
     @timeit to "get elements" elements_φ_Γ = getElements(nodes_φ, entities["Γ"], eval(type_φ), integrationOrder, sp_φ, normal=true)
     @timeit to "calculate shape functions" set𝝭!(elements_φ_Γ)
 
@@ -190,14 +205,14 @@ fᵐ = zeros(3*nᵐ)
         ∫MφdΓ=>(elements_m_Γ,elements_φ_Γ),
     ]
     𝑎ˢᵠ = ∫QφdΩ=>(elements_q,elements_φ)
-    # 𝑓ᵠ = ∫φmdΩ=>elements_φ
+    𝑓ᵠ = ∫φmdΩ=>elements_φ
     @timeit to "assemble" 𝑎ᵐᵐ(kᵐᵐ)
     @timeit to "assemble" 𝑎ᵐᵠ(kᵐᵠ)
     @timeit to "assemble" 𝑎ˢᵠ(kˢᵠ)
     # @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
-αʷ = 0e1;αᵠ = 0e1;
+αʷ = 0e2;αᵠ = 0e2;
 
 @timeit to "calculate ∫QwdΓ" begin
     @timeit to "get elements" elements_q_1 = getElements(nodes, entities["Γ¹"], integrationOrder, normal=true)
@@ -306,7 +321,7 @@ end
 # println(kˢᵠ*dᵠ+kˢʷ*dʷ+kˢˢ*dˢ+kˢᵐ*dᵐ - fˢ)
 # println(kᵐᵠ*dᵠ+kᵐʷ*dʷ+kˢᵐ'*dˢ+kᵐᵐ*dᵐ - fᵐ)
 # ──────────────────────────────────────────────────────────
-@timeit to "solve" d = [kᵠᵠ kᵠʷ kˢᵠ' kᵐᵠ';kᵠʷ' kʷʷ kˢʷ' kᵐʷ';kˢᵠ kˢʷ kˢˢ kˢᵐ;kᵐᵠ kᵐʷ kˢᵐ' kᵐᵐ]\[fᵠ;fʷ;fˢ;fᵐ]
+@timeit to "solve" d = [kᵠᵠ+kᵅᵠᵠ kᵠʷ kˢᵠ' kᵐᵠ';kᵠʷ' kʷʷ+kᵅʷʷ kˢʷ' kᵐʷ';kˢᵠ kˢʷ kˢˢ kˢᵐ;kᵐᵠ kᵐʷ kˢᵐ' kᵐᵐ]\[fᵠ+fᵅᵠ;fʷ+fᵅʷ;fˢ;fᵐ]
 push!(nodes_φ,:d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ])
 push!(nodes_w,:d=>d[2*nᵠ+1:2*nᵠ+nʷ])
 push!(nodes,:q₁=>d[2*nᵠ+nʷ+1:2:2*nᵠ+nʷ+2*nˢ], :q₂=>d[2*nᵠ+nʷ+2:2:2*nᵠ+nʷ+2*nˢ])
@@ -365,7 +380,14 @@ end
 
 println(to)
 
-println("h=$h,αʷ=$αʷ,αᵠ=$αᵠ,nᵠ=$nᵠ,nʷ=$nʷ,nˢ=$nˢ,nᵐ=$nᵐ")
+println("h=$h,Dᵇ=$Dᵇ,Dˢ=$Dˢ,αʷ=$αʷ,αᵠ=$αᵠ,nᵠ=$nᵠ,nʷ=$nʷ,nˢ=$nˢ,nᵐ=$nᵐ")
+print("nˢ≤ᵠ:         ")
+n_diff = nᵠ-nˢ
+n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
+print("nʷ≤⌊[nˢ]⌋-1:  ")
+n = floor(0.5*((1+8*nˢ)^0.5-3))
+n_diff = 0.5*n*(n+1)-nʷ
+n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
 println("L₂ error of w: ", log10(L₂_w))
 println("L₂ error of φ: ", log10(L₂_φ))
 println("L₂ error of Q: ", log10(L₂_Q))
