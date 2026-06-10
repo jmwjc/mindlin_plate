@@ -1,6 +1,6 @@
 using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements, getPiecewiseElements, getPiecewiseBoundaryElements
-import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫MMdΩ, ∫∇MφdΩ, ∫MφdΓ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ
+import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫wwdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫MMdΩ, ∫∇MφdΩ, ∫MφdΓ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ
 
 using TimerOutputs, LinearAlgebra
 import Gmsh: gmsh
@@ -77,7 +77,7 @@ type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
 ndiv_φ = 16
 ndiv_w = 14
-ndiv_q = 17
+ndiv_q = 30
 sʷ = 1.5
 sᵠ = 1.5
 # ─── Deflection W ─────────────────────────────────────────
@@ -242,27 +242,28 @@ end
 # @timeit to "solve" d = [kᵠᵠ+kᵅᵠᵠ kᵠʷ kˢᵠ' kᵐᵠ';kᵠʷ' kʷʷ+kᵅʷʷ kˢʷ' kᵐʷ';kˢᵠ kˢʷ kˢˢ kˢᵐ;kᵐᵠ kᵐʷ kˢᵐ' kᵐᵐ]\[fᵠ+fᵅᵠ;fʷ+fᵅʷ;fˢ;fᵐ]
 @timeit to "calculate ∫wwdΩ" begin
     @timeit to "get elements" elements = getElements(nodes_w, entities["Ω"], eval(type_w), integrationOrder, sp_w)
+    # prescribe!(elements, :E=>12/5/h, :ν=>0.0, :h=>h)
     prescribe!(elements, :E=>E, :ν=>ν, :h=>h)
     @timeit to "calculate shape functions" set∇𝝭!(elements)
     𝑎ʷʷ = ∫wwdΩ=>elements
-    @timeit to "assemble" 𝑎ʷʷ(kʷʷ)
+    # @timeit to "assemble" 𝑎ʷʷ(kʷʷ)
 end
 
 
 
 println("h = $h, Dˢ = $Dˢ, Dᵇ = $Dᵇ, nᵠ = $nᵠ, nʷ = $nʷ, nˢ = $nˢ")
-print("nˢ≤ᵠ:         ")
-n_diff = nᵠ-nˢ
-n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
-print("nʷ≤⌊[nˢ]⌋-1:  ")
+
+k̃ᵠᵠ = - kᵐᵠ'*(kᵐᵐ\kᵐᵠ)
+k̃ʷʷ = - kˢʷ'*(kˢˢ\kˢʷ)
+k̃ᵠʷ = - kˢᵠ'*(kˢˢ\kˢʷ)
+# ─── Eigen Test For βʷ ────────────────────────────────────
+print("nʷ≤⌊[nˢ]⌋-1:         ")
 n = floor(0.5*((1+8*nˢ)^0.5-3))
 n_diff = 0.5*n*(n+1)-nʷ
 n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
-
-# ─── Eigen Test For βʷ ────────────────────────────────────
-βʷ² = eigvals(-kˢʷ'*(kˢˢ\kˢʷ))
-# βʷ² = eigvals(kᵠʷ*(kʷʷ\kᵠʷ'), kᵠᵠ)
-# βʷ² = eigvals(-kˢʷ*(kʷʷ\kˢʷ'),kˢˢ)
+βʷ² = eigvals(k̃ʷʷ)
+# βʷ² = eigvals(-kˢʷ*(kʷʷ\kˢʷ'), kˢˢ)
+# βʷ² = eigvals(-kˢʷ*(k̃ʷʷ\kˢʷ'),kˢˢ)
 βʷ² = real.(βʷ²)
 βʷ²⁺ = βʷ²[βʷ² .≥ 1e6*eps()]
 βʷ⁺ = βʷ²⁺.^0.5
@@ -272,14 +273,31 @@ nʷ⁺ = length(βʷ⁺)
 println("βʷ⁺ = $βʷ⁺, nʷ⁺ = $nʷ⁺")
 
 # ─── Eigen Test For βᵞ ────────────────────────────────────
-k̃ᵠᵠ = - kᵐᵠ'*(kᵐᵐ\kᵐᵠ)
-k̃ʷʷ = - kˢʷ'*(kˢˢ\kˢʷ)
-k̃ᵠʷ = - kˢᵠ'*(kˢˢ\kˢʷ)
-βᵞ² = eigvals(-kˢᵠ'*(kˢˢ\kˢᵠ)-k̃ᵠʷ*(k̃ʷʷ\k̃ᵠʷ'),k̃ᵠᵠ)
+print("2nˢ≤nʷ+2nᵠ-min(nʷ,n):")
+n = floor(0.5*((1+8*nᵠ)^0.5-3))
+# n = ceil(0.5*((1+8*nᵠ)^0.5-3))
+n = 0.5*(n+2)*(n+3)
+n_diff = 0.5*(nʷ+2nᵠ-min(nʷ,n))-nˢ
+n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
+println("nʷ = $nʷ, n = $n")
+
+# βᵞ² = eigvals(-kˢᵠ'*(kˢˢ\kˢᵠ)-k̃ᵠʷ*(k̃ʷʷ\k̃ᵠʷ'),k̃ᵠᵠ)
+βᵞ² = eigvals([-kˢᵠ'*(kˢˢ\kˢᵠ) k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ],[k̃ᵠᵠ kᵠʷ;kᵠʷ' kʷʷ])
+# βᵞ² = eigvals([-kˢᵠ'*(kˢˢ\kˢᵠ) k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ])
+# βᵞ² = eigvals(-kˢᵠ'*(kˢˢ\kˢᵠ),k̃ᵠᵠ)
 # βᵞ² = eigvals(k̃ᵠᵠ)
 βᵞ² = real.(βᵞ²)
-βᵞ²⁺ = βᵞ²[βᵞ² .≥ 1e6*eps()]
+βᵞ²⁺ = βᵞ²[βᵞ² .≥ 1e7*eps()]
 βᵞ⁺ = βᵞ²⁺.^0.5
 nᵞ⁺ = length(βᵞ⁺)
 βᵞ⁺ = min(βᵞ⁺...)
 println("βᵞ⁺ = $βᵞ⁺, nᵞ⁺ = $nᵞ⁺")
+
+# ─── Eigen Test For βʷ+βᵞ ──────────────────────────────────
+# βʷᵞ² = eigvals(-kˢᵠ'*(kˢˢ\kˢᵠ)-k̃ᵠʷ*(k̃ʷʷ\k̃ᵠʷ'),k̃ᵠᵠ)
+# βʷᵞ² = real.(βʷᵞ²)
+# βʷᵞ²⁺ = βʷᵞ²[βʷᵞ² .≥ 1e5*eps()]
+# βʷᵞ⁺ = βᵞ²⁺.^0.5
+# nʷᵞ⁺ = length(βʷᵞ⁺)
+# βʷᵞ⁺ = min(βʷᵞ⁺...)
+# println("βʷᵞ⁺ = $βʷᵞ⁺, nʷᵞ⁺ = $nʷᵞ⁺")
