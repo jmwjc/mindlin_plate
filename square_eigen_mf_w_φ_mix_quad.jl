@@ -76,11 +76,11 @@ type_φ = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_Q = :quad4
 type_M = :(PiecewisePolynomial{:Linear2D})
 ndiv_φ = 28
-# ndiv_w = 13
-# ndiv_q = 16
+ndiv_w = 26
+# ndiv_q = 28
 sʷ = 1.5
 sᵠ = 1.5
-for ndiv_w = 10:32
+# for ndiv_w = 10:32
  XLSX.openxlsx("xls/square_eigen_$(ndiv_φ)_quad4_$(ndiv_w).xlsx", mode="w") do xf
 for ndiv_q = 10:32
 row = ndiv_q
@@ -322,4 +322,4 @@ println("L₂ error of βᵞ⁺: ", log10(βᵞ⁺))
 
 end
 end
-end
+# end

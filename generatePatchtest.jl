@@ -19,7 +19,7 @@ import BenchmarkExample: PatchTest
 #     PatchTest.generateMsh("msh/patchtest_un_tri3_$n.msh", lc = 1/n, order=1, quad=false)
 # end
 
-for n in 2:32
+for n in 2:64
     PatchTest.generateMsh("msh/patchtest_un_quad4_$n.msh", lc = 1/n, order=1, quad=true)
 end
 
