@@ -1,13 +1,13 @@
 using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements
-import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂, L₂φ, L₂Q
+import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂w, L₂φ, L₂Q
 
 using TimerOutputs, WriteVTK 
 import Gmsh: gmsh
 
 E = 10.92e6
 ν = 0.3
-h = 1e-0
+h = 1e-5
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -27,7 +27,7 @@ gmsh.initialize()
 # @timeit to "open msh file" gmsh.open("msh/patchtest_3.msh")
 # @timeit to "get nodes" nodes_s = get𝑿ᵢ()
 
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_4.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_16.msh")
 @timeit to "get entities" entities = getPhysicalGroups()
 @timeit to "get nodes" nodes = get𝑿ᵢ()
 
@@ -104,7 +104,7 @@ end
 # println(kᵛʷ*dʷ)
 # println(kᵛᵛ*dᵛ + kᵛʷ*dʷ)
 # println(kᵛʷ*ones(nʷ).-fᵛ)
-println(kᵠᵠ*dᵠ + kᵛᵠ'*dᵛ - fᵠ)
+# println(kᵠᵠ*dᵠ + kᵛᵠ'*dᵛ - fᵠ)
 # println(kᵛᵛ*dᵛ + kᵛᵠ*dᵠ + kᵛʷ*dʷ - fᵛ)
 # println(kᵛʷ'*dᵛ + kʷʷ*dʷ - fʷ)
 # println(kᵛᵠ*dᵠ)
@@ -113,18 +113,18 @@ println(kᵠᵠ*dᵠ + kᵛᵠ'*dᵛ - fᵠ)
 # println(kᵛᵛ*dᵛ + kᵛʷ*dʷ)
 
 # println([kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]*[dᵠ;dʷ;dᵛ] .- [fᵠ;fʷ;fᵛ])
-# @timeit to "solve" d = [kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]\[fᵠ;fʷ;fᵛ]
+@timeit to "solve" d = [kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]\[fᵠ;fʷ;fᵛ]
 # println([kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]*d .- [fᵠ;fʷ;fᵛ])
-# push!(nodes,:d=>d[2*nᵠ+1:2*nᵠ+nʷ], :d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ], :q₁=>d[2*nᵠ+nʷ+1:2:end], :q₂=>d[2*nᵠ+nʷ+2:2:end])
+push!(nodes,:d=>d[2*nᵠ+1:2*nᵠ+nʷ], :d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ], :q₁=>d[2*nᵠ+nʷ+1:2:end], :q₂=>d[2*nᵠ+nʷ+2:2:end])
 
-# @timeit to "calculate error" begin
-#     @timeit to "get elements" elements = getElements(nodes, entities["Ω"], 10)
-#     prescribe!(elements, :E=>E, :ν=>ν, :h=>h, :u=>w, :φ₁=>φ₁, :φ₂=>φ₂, :Q₁=>Q₁, :Q₂=>Q₂)
-#     @timeit to "calculate shape functions" set𝝭!(elements)
-#     L₂_w = L₂(elements)
-#     L₂_φ = L₂φ(elements)
-#     L₂_Q = L₂Q(elements)
-# end
+@timeit to "calculate error" begin
+    @timeit to "get elements" elements = getElements(nodes, entities["Ω"], 10)
+    prescribe!(elements, :E=>E, :ν=>ν, :h=>h, :u=>w, :φ₁=>φ₁, :φ₂=>φ₂, :Q₁=>Q₁, :Q₂=>Q₂)
+    @timeit to "calculate shape functions" set𝝭!(elements)
+    L₂_w = L₂w(elements)
+    L₂_φ = L₂φ(elements)
+    L₂_Q = L₂Q(elements)
+end
 
 gmsh.finalize()
 
@@ -146,8 +146,8 @@ gmsh.finalize()
 
 # println(to)
 
-# println("L₂ error of w: ", L₂_w)
-# println("L₂ error of φ: ", L₂_φ)
-# println("L₂ error of Q: ", L₂_Q)
+println("L₂ error of w: ", L₂_w)
+println("L₂ error of φ: ", L₂_φ)
+println("L₂ error of Q: ", L₂_Q)
 
 

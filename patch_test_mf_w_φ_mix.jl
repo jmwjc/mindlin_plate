@@ -314,29 +314,29 @@ end
 # println(kˢʷ'*(kˢˢ\(fˢ-kˢᵠ*dᵠ-kˢʷ*dʷ))+kᵐʷ'*(kᵐᵐ\(fᵐ-kᵐᵠ*dᵠ-kᵐʷ*dʷ))-fʷ)
 # println((kˢʷ'*(kˢˢ\fˢ)-kˢʷ'*(kˢˢ\kˢᵠ)*dᵠ-kˢʷ'*(kˢˢ\kˢʷ)*dʷ)+(kᵐʷ'*(kᵐᵐ\fᵐ)-kᵐʷ'*(kᵐᵐ\kᵐᵠ)*dᵠ-kᵐʷ'*(kᵐᵐ\kᵐʷ)*dʷ)-fʷ)
 # println(-(kˢʷ'*(kˢˢ\kˢᵠ)+kᵐʷ'*(kᵐᵐ\kᵐᵠ))*dᵠ-(kˢʷ'*(kˢˢ\kˢʷ)+kᵐʷ'*(kᵐᵐ\kᵐʷ))*dʷ-(fʷ-kˢʷ'*(kˢˢ\fˢ)-kᵐʷ'*(kᵐᵐ\fᵐ)))
-k = -[kˢᵠ'*(kˢˢ\kˢᵠ)+kᵐᵠ'*(kᵐᵐ\kᵐᵠ)-kᵅᵠᵠ kˢᵠ'*(kˢˢ\kˢʷ)+kᵐᵠ'*(kᵐᵐ\kᵐʷ); kˢʷ'*(kˢˢ\kˢᵠ)+kᵐʷ'*(kᵐᵐ\kᵐᵠ) kˢʷ'*(kˢˢ\kˢʷ)+kᵐʷ'*(kᵐᵐ\kᵐʷ)-kᵅʷʷ]
-f = [fᵠ - kˢᵠ' * (kˢˢ \ fˢ) - kᵐᵠ' * (kᵐᵐ \ fᵐ) + fᵅᵠ; fʷ - kˢʷ' * (kˢˢ \ fˢ) - kᵐʷ' * (kᵐᵐ \ fᵐ) + fᵅʷ]
+# k = -[kˢᵠ'*(kˢˢ\kˢᵠ)+kᵐᵠ'*(kᵐᵐ\kᵐᵠ)-kᵅᵠᵠ kˢᵠ'*(kˢˢ\kˢʷ)+kᵐᵠ'*(kᵐᵐ\kᵐʷ); kˢʷ'*(kˢˢ\kˢᵠ)+kᵐʷ'*(kᵐᵐ\kᵐᵠ) kˢʷ'*(kˢˢ\kˢʷ)+kᵐʷ'*(kᵐᵐ\kᵐʷ)-kᵅʷʷ]
+# f = [fᵠ - kˢᵠ' * (kˢˢ \ fˢ) - kᵐᵠ' * (kᵐᵐ \ fᵐ) + fᵅᵠ; fʷ - kˢʷ' * (kˢˢ \ fˢ) - kᵐʷ' * (kᵐᵐ \ fᵐ) + fᵅʷ]
 # println(kᵅʷʷ*dʷ-fᵅʷ)
 # println(kᵅᵠᵠ*dᵠ-fᵅᵠ)
 # println(norm(k*[dᵠ;dʷ]-f))
 # ──────────────────────────────────────────────────────────
-# @timeit to "solve" d = [kᵠᵠ+kᵅᵠᵠ kᵠʷ kˢᵠ' kᵐᵠ';kᵠʷ' kʷʷ+kᵅʷʷ kˢʷ' kᵐʷ';kˢᵠ kˢʷ kˢˢ kˢᵐ;kᵐᵠ kᵐʷ kˢᵐ' kᵐᵐ]\[fᵠ+fᵅᵠ;fʷ+fᵅʷ;fˢ;fᵐ]
-# push!(nodes_φ,:d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ])
-# push!(nodes_w,:d=>d[2*nᵠ+1:2*nᵠ+nʷ])
-# push!(nodes,:q₁=>d[2*nᵠ+nʷ+1:2:2*nᵠ+nʷ+2*nˢ], :q₂=>d[2*nᵠ+nʷ+2:2:2*nᵠ+nʷ+2*nˢ])
-# push!(nodes,:m₁₁=>d[2*nᵠ+nʷ+2*nˢ+1:3:end],:m₂₂=>d[2*nᵠ+nʷ+2*nˢ+2:3:end],:m₁₂=>d[2*nᵠ+nʷ+2*nˢ+3:3:end])
+@timeit to "solve" d = [kᵠᵠ+kᵅᵠᵠ kᵠʷ kˢᵠ' kᵐᵠ';kᵠʷ' kʷʷ+kᵅʷʷ kˢʷ' kᵐʷ';kˢᵠ kˢʷ kˢˢ kˢᵐ;kᵐᵠ kᵐʷ kˢᵐ' kᵐᵐ]\[fᵠ+fᵅᵠ;fʷ+fᵅʷ;fˢ;fᵐ]
+push!(nodes_φ,:d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ])
+push!(nodes_w,:d=>d[2*nᵠ+1:2*nᵠ+nʷ])
+push!(nodes,:q₁=>d[2*nᵠ+nʷ+1:2:2*nᵠ+nʷ+2*nˢ], :q₂=>d[2*nᵠ+nʷ+2:2:2*nᵠ+nʷ+2*nˢ])
+push!(nodes,:m₁₁=>d[2*nᵠ+nʷ+2*nˢ+1:3:end],:m₂₂=>d[2*nᵠ+nʷ+2*nˢ+2:3:end],:m₁₂=>d[2*nᵠ+nʷ+2*nˢ+3:3:end])
 
 ## ──────────────────────────────────────────────────────────
-d = k \ f
-dᵠ = d[1:2*nᵠ]
-dʷ = d[2*nᵠ+1:2*nᵠ+nʷ]
-dˢ = kˢˢ \ (fˢ - kˢᵠ * dᵠ - kˢʷ * dʷ)
-dᵐ = kᵐᵐ \ (fᵐ - kᵐᵠ * dᵠ - kᵐʷ * dʷ)
+# d = k \ f
+# dᵠ = d[1:2*nᵠ]
+# dʷ = d[2*nᵠ+1:2*nᵠ+nʷ]
+# dˢ = kˢˢ \ (fˢ - kˢᵠ * dᵠ - kˢʷ * dʷ)
+# dᵐ = kᵐᵐ \ (fᵐ - kᵐᵠ * dᵠ - kᵐʷ * dʷ)
 
-push!(nodes_φ, :d₁ => dᵠ[1:2:2*nᵠ], :d₂ => dᵠ[2:2:2*nᵠ])
-push!(nodes_w, :d => dʷ)
-push!(nodes, :q₁ => dˢ[1:2:end], :q₂ => dˢ[2:2:end])
-push!(nodes, :m₁₁ => dᵐ[1:3:end], :m₂₂ => dᵐ[2:3:end], :m₁₂ => dᵐ[3:3:end])
+# push!(nodes_φ, :d₁ => dᵠ[1:2:2*nᵠ], :d₂ => dᵠ[2:2:2*nᵠ])
+# push!(nodes_w, :d => dʷ)
+# push!(nodes, :q₁ => dˢ[1:2:end], :q₂ => dˢ[2:2:end])
+# push!(nodes, :m₁₁ => dᵐ[1:3:end], :m₂₂ => dᵐ[2:3:end], :m₁₂ => dᵐ[3:3:end])
 
 @timeit to "calculate error" begin
     @timeit to "get elements" elements_φ = getElements(nodes_φ, entities["Ω"], eval(type_φ), 10, sp_φ)
