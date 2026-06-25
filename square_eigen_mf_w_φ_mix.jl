@@ -281,8 +281,8 @@ n_diff = 0.5*(nʷ+2nᵠ-min(nʷ,n))-nˢ
 n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
 println("nʷ = $nʷ, n = $n")
 
-# βᵞ² = eigvals(-kˢᵠ'*(kˢˢ\kˢᵠ)-k̃ᵠʷ*(k̃ʷʷ\k̃ᵠʷ'),k̃ᵠᵠ)
-βᵞ² = eigvals([-kˢᵠ'*(kˢˢ\kˢᵠ) k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ],[k̃ᵠᵠ kᵠʷ;kᵠʷ' kʷʷ])
+βᵞ² = eigvals(-kˢᵠ'*(kˢˢ\kˢᵠ)-k̃ᵠʷ*(k̃ʷʷ\k̃ᵠʷ'),k̃ᵠᵠ)
+# βᵞ² = eigvals([-kˢᵠ'*(kˢˢ\kˢᵠ) k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ],[k̃ᵠᵠ kᵠʷ;kᵠʷ' kʷʷ])
 # βᵞ² = eigvals([-kˢᵠ'*(kˢˢ\kˢᵠ) k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ])
 # βᵞ² = eigvals(-kˢᵠ'*(kˢˢ\kˢᵠ),k̃ᵠᵠ)
 # βᵞ² = eigvals(k̃ᵠᵠ)

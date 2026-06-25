@@ -267,18 +267,18 @@ end
 
 
 println("h = $h, Dˢ = $Dˢ, Dᵇ = $Dᵇ, nᵠ = $nᵠ, nʷ = $nʷ, nˢ = $nˢ")
-print("nˢ≤ᵠ:         ")
-n_diff = nᵠ-nˢ
-n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
-print("nʷ≤⌊[nˢ]⌋-1:  ")
+
+k̃ᵠᵠ = - kᵐᵠ'*(kᵐᵐ\kᵐᵠ)
+k̃ʷʷ = - kˢʷ'*(kˢˢ\kˢʷ)
+k̃ᵠʷ = - kˢᵠ'*(kˢˢ\kˢʷ)
+# ─── Eigen Test For βʷ ────────────────────────────────────
+print("nʷ≤⌊[nˢ]⌋-1:         ")
 n = floor(0.5*((1+8*nˢ)^0.5-3))
 n_diff = 0.5*n*(n+1)-nʷ
 n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
-
-# ─── Eigen Test For βʷ ────────────────────────────────────
-βʷ² = eigvals(-kˢʷ'*(kˢˢ\kˢʷ))
-# βʷ² = eigvals(kᵠʷ*(kʷʷ\kᵠʷ'), kᵠᵠ)
-# βʷ² = eigvals(-kˢʷ*(kʷʷ\kˢʷ'),kˢˢ)
+βʷ² = eigvals(k̃ʷʷ)
+# βʷ² = eigvals(-kˢʷ*(kʷʷ\kˢʷ'), kˢˢ)
+# βʷ² = eigvals(-kˢʷ*(k̃ʷʷ\kˢʷ'),kˢˢ)
 βʷ² = real.(βʷ²)
 βʷ²⁺ = βʷ²[βʷ² .≥ 1e6*eps()]
 βʷ⁺ = βʷ²⁺.^0.5
@@ -288,13 +288,21 @@ nʷ⁺ = length(βʷ⁺)
 println("βʷ⁺ = $βʷ⁺, nʷ⁺ = $nʷ⁺")
 
 # ─── Eigen Test For βᵞ ────────────────────────────────────
-k̃ᵠᵠ = - kᵐᵠ'*(kᵐᵐ\kᵐᵠ)
-k̃ʷʷ = - kˢʷ'*(kˢˢ\kˢʷ)
-k̃ᵠʷ = - kˢᵠ'*(kˢˢ\kˢʷ)
+print("2nˢ≤nʷ+2nᵠ-min(nʷ,n):")
+n = floor(0.5*((1+8*nᵠ)^0.5-3))
+# n = ceil(0.5*((1+8*nᵠ)^0.5-3))
+n = 0.5*(n+2)*(n+3)
+n_diff = 0.5*(nʷ+2nᵠ-min(nʷ,n))-nˢ
+n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
+println("nʷ = $nʷ, n = $n")
+
 βᵞ² = eigvals(-kˢᵠ'*(kˢˢ\kˢᵠ)-k̃ᵠʷ*(k̃ʷʷ\k̃ᵠʷ'),k̃ᵠᵠ)
+# βᵞ² = eigvals([-kˢᵠ'*(kˢˢ\kˢᵠ) k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ],[k̃ᵠᵠ kᵠʷ;kᵠʷ' kʷʷ])
+# βᵞ² = eigvals([-kˢᵠ'*(kˢˢ\kˢᵠ) k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ])
+# βᵞ² = eigvals(-kˢᵠ'*(kˢˢ\kˢᵠ),k̃ᵠᵠ)
 # βᵞ² = eigvals(k̃ᵠᵠ)
 βᵞ² = real.(βᵞ²)
-βᵞ²⁺ = βᵞ²[βᵞ² .≥ 1e6*eps()]
+βᵞ²⁺ = βᵞ²[βᵞ² .≥ 1e7*eps()]
 βᵞ⁺ = βᵞ²⁺.^0.5
 nᵞ⁺ = length(βᵞ⁺)
 βᵞ⁺ = min(βᵞ⁺...)
