@@ -7,7 +7,7 @@ import Gmsh: gmsh
 
 E = 1e6
 ν = 0.3
-h = 1e-3
+h = 1e-2
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 integrationOrder = 2
@@ -76,19 +76,19 @@ type_φ = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
 ndiv_φ = 16
-ndiv_w = 14
-ndiv_q = 30
+ndiv_w = 8
+ndiv_q = 16
 sʷ = 1.5
 sᵠ = 1.5
 # ─── Deflection W ─────────────────────────────────────────
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_100_$ndiv_w.msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()
 xʷ = nodes_w.x
 yʷ = nodes_w.y
 zʷ = nodes_w.z
 sp_w = RegularGrid(xʷ,yʷ,zʷ,n = 3,γ = 5)
 nʷ = length(nodes_w)
-s = 1/ndiv_w
+s = 100/ndiv_w
 s₁ = sʷ * s * ones(nʷ)
 s₂ = sʷ * s * ones(nʷ)
 s₃ = sʷ * s * ones(nʷ)

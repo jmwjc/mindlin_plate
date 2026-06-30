@@ -1,13 +1,13 @@
 using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements, getPiecewiseElements, getPiecewiseBoundaryElements
-import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫Q∇wdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂, L₂φ, L₂Q
+import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫Q∇wdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂w, L₂φ, L₂Q
 
 using TimerOutputs, WriteVTK, XLSX 
 import Gmsh: gmsh
 
 E = 10.92e6
 ν = 0.3
-h = 1e-5
+h = 1e-3
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -28,14 +28,9 @@ gmsh.initialize()
 integrationOrder = 4
 type_w = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_φ = :tri3
-type_q = :(PiecewisePolynomial{:Linear2D})
-# type_q = :(PiecewisePolynomial{:Quadratic2D})
-ndiv = 8
-# ndiv_w = 16
-XLSX.openxlsx("xls/square.xlsx", mode="w") do xf
-for ndiv_w = 2:32
-row = ndiv_w
-# ──────────────────────────────────────────────────────────
+type_q = :tri3
+ndiv_w = 4
+
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()
 xʷ = nodes_w.x
@@ -146,7 +141,7 @@ end
     @timeit to "get elements" elements_q = getPiecewiseElements(entities["Ω"], eval(type_q), 10)
     prescribe!(elements_φ, :E=>E, :ν=>ν, :h=>h, :φ₁=>φ₁, :φ₂=>φ₂)
     @timeit to "calculate shape functions" set𝝭!(elements_φ)
-    prescribe!(elements_w, :E=>E, :ν=>ν, :h=>h, :u=>w)
+    prescribe!(elements_w, :E=>E, :ν=>ν, :h=>h, :w=>w)
     @timeit to "calculate shape functions" set𝝭!(elements_w)
     prescribe!(elements_q, :E=>E, :ν=>ν, :h=>h, :Q₁=>Q₁, :Q₂=>Q₂)
     @timeit to "calculate shape functions" set𝝭!(elements_q)
@@ -165,7 +160,7 @@ push!(nodes_w,:d=>d[2*nᵠ+1:2*nᵠ+nʷ])
 push!(nodes_q,:q₁=>d[2*nᵠ+nʷ+1:2:end], :q₂=>d[2*nᵠ+nʷ+2:2:end])
 
 @timeit to "calculate error" begin
-    L₂_w = L₂(elements_w)
+    L₂_w = L₂w(elements_w)
     L₂_φ = L₂φ(elements_φ)
     L₂_Q = L₂Q(elements_q)
 end
@@ -233,28 +228,3 @@ println("L₂ error of w: ", L₂_w)
 println("L₂ error of φ: ", L₂_φ)
 println("L₂ error of Q: ", L₂_Q)
 # ──────────────────────────────────────────────────────────
-    sheet = xf[1]
-    XLSX.rename!(sheet, "new_sheet")
-    sheet["A1"] = "type w"
-    sheet["B1"] = "nʷ"
-    sheet["C1"] = "type φ"
-    sheet["D1"] = "nᵠ"
-    sheet["E1"] = "type Q"
-    sheet["F1"] = "nᵛ"
-    sheet["G1"] = "L₂w"
-    sheet["H1"] = "L₂φ"
-    sheet["I1"] = "L₂Q"
-    sheet["A$row"] = "$type_w"
-    sheet["B$row"] = nʷ
-    sheet["C$row"] = "$type_φ"
-    sheet["D$row"] = nᵠ
-    sheet["E$row"] = "$type_q"
-    sheet["F$row"] = nᵛ
-    sheet["G$row"] = log10(L₂_w)
-    sheet["H$row"] = log10(L₂_φ)
-    sheet["I$row"] = log10(L₂_Q)
-end
-end
-gmsh.finalize()
-
-

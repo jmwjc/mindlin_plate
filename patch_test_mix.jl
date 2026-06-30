@@ -172,7 +172,7 @@ push!(nodes,:d=>d[2*nᵠ+1:2*nᵠ+nʷ], :d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*n�
 
 @timeit to "calculate error" begin
     @timeit to "get elements" elements = getElements(nodes, entities["Ω"], 10)
-    prescribe!(elements, :E=>E, :ν=>ν, :h=>h, :u=>w, :φ₁=>φ₁, :φ₂=>φ₂, :Q₁=>Q₁, :Q₂=>Q₂)
+    prescribe!(elements, :E=>E, :ν=>ν, :h=>h, :w=>w, :φ₁=>φ₁, :φ₂=>φ₂, :Q₁=>Q₁, :Q₂=>Q₂)
     @timeit to "calculate shape functions" set𝝭!(elements)
     L₂_w = L₂w(elements)
     L₂_φ = L₂φ(elements)

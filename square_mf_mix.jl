@@ -4,10 +4,11 @@ import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ,
 
 using TimerOutputs, WriteVTK 
 import Gmsh: gmsh
+include("cal_area_support.jl")
 
 E = 10.92e6
 ν = 0.3
-h = 1e-0
+h = 1e-3
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -23,17 +24,32 @@ Q₂(x,y,z) = Dˢ*(w₂(x,y,z)-φ₂(x,y,z))
 
 const to = TimerOutput()
 
+# ndiv = 4, nʷ = 12, 21
+# ndiv = 8, nʷ = 71, 97
+# ndiv = 16, nʷ = 238, 297
+# ndiv = 32, nʷ = 977, 1034, 1051, 1179
+ndiv = 32
+# ndiv_w = Int(ndiv/2)
+nʷ = 1326
 gmsh.initialize()
 # @timeit to "open msh file" gmsh.open("msh/patchtest_3.msh")
 # @timeit to "get nodes" nodes_s = get𝑿ᵢ()
 
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_8.msh")
+# @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_irregular_$nʷ.msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()
 xʷ = nodes_w.x
 yʷ = nodes_w.y
 zʷ = nodes_w.z
 sp = RegularGrid(xʷ,yʷ,zʷ,n = 3,γ = 5)
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_16.msh")
+@timeit to "get entities" entities = getPhysicalGroups()
+elements_support = getElements(nodes_w, entities["Ω"], 1)
+s, var_A = cal_area_support(elements_support)
+s₁ = 1.5*s*ones(nʷ)
+s₂ = 1.5*s*ones(nʷ)
+s₃ = 1.5*s*ones(nʷ)
+push!(nodes_w,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
+@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv.msh")
 @timeit to "get nodes" nodes = get𝑿ᵢ()
 @timeit to "get entities" entities = getPhysicalGroups()
 
@@ -41,11 +57,7 @@ type = ReproducingKernel{:Linear2D,:□,:CubicSpline}
 nʷ = length(nodes_w)
 nᵠ = length(nodes)
 nᵛ = length(nodes)
-s = 0.25
-s₁ = 1.5*s*ones(nʷ)
-s₂ = 1.5*s*ones(nʷ)
-s₃ = 1.5*s*ones(nʷ)
-push!(nodes_w,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
+
 kʷʷ = zeros(nʷ,nʷ)
 kᵠᵠ = zeros(2*nᵠ,2*nᵠ)
 kᵛᵛ = zeros(2*nᵛ,2*nᵛ)
@@ -56,7 +68,7 @@ fʷ = zeros(nʷ)
 fᵠ = zeros(2*nᵠ)
 fᵛ = zeros(2*nᵛ)
 
-integrationOrder = 3
+integrationOrder = 2
 @timeit to "calculate ∫κκdΩ" begin
     @timeit to "get elements" elements_w = getElements(nodes_w, entities["Ω"], type, integrationOrder, sp)
     @timeit to "get elements" elements = getElements(nodes, entities["Ω"], integrationOrder)
@@ -149,7 +161,7 @@ push!(nodes_w,:d=>d[2*nᵠ+1:2*nᵠ+nʷ])
 
 @timeit to "calculate error" begin
     @timeit to "get elements" elements = getElements(nodes_w, entities["Ω"], type, 10, sp)
-    prescribe!(elements, :E=>E, :ν=>ν, :h=>h, :u=>w)
+    prescribe!(elements, :E=>E, :ν=>ν, :h=>h, :w=>w)
     @timeit to "calculate shape functions" set𝝭!(elements)
     L₂_w = L₂w(elements)
     @timeit to "get elements" elements = getElements(nodes, entities["Ω"], 10)
@@ -161,26 +173,43 @@ end
 
 gmsh.finalize()
 
-points = zeros(3, nᵛ)
-for node in nodes
-    I = node.𝐼
-    points[1,I] = node.x
-    points[2,I] = node.y
-    points[3,I] = node.z
-end
+# points = zeros(3, nᵛ)
+# for node in nodes
+#     I = node.𝐼
+#     points[1,I] = node.x
+#     points[2,I] = node.y
+#     points[3,I] = node.z
+# end
 # cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE, [node.𝐼 for node in elm.𝓒]) for elm in elements]
-cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE_STRIP, [node.𝐼 for node in elm.𝓒]) for elm in elements]
-vtk_grid("vtk/square.vtu", points, cells) do vtk
-    vtk["Q₁"] = [node.q₁ for node in nodes]
-    vtk["Q₂"] = [node.q₂ for node in nodes]
-    vtk["Q̄₁"] = [Q₁(node.x,node.y,node.z) for node in nodes]
-    vtk["Q̄₂"] = [Q₂(node.x,node.y,node.z) for node in nodes]
-end
+# cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE_STRIP, [node.𝐼 for node in elm.𝓒]) for elm in elements]
+# vtk_grid("vtk/square.vtu", points, cells) do vtk
+#     vtk["Q₁"] = [node.q₁ for node in nodes]
+#     vtk["Q₂"] = [node.q₂ for node in nodes]
+#     vtk["Q̄₁"] = [Q₁(node.x,node.y,node.z) for node in nodes]
+#     vtk["Q̄₂"] = [Q₂(node.x,node.y,node.z) for node in nodes]
+# end
 
 println(to)
 
-println("L₂ error of w: ", L₂_w)
-println("L₂ error of φ: ", L₂_φ)
-println("L₂ error of Q: ", L₂_Q)
+# println("L₂ error of w: ", L₂_w)
+# println("L₂ error of φ: ", L₂_φ)
+# println("L₂ error of Q: ", L₂_Q)
+
+println("h = $h, Dˢ = $Dˢ, Dᵇ = $Dᵇ, nᵠ = $nᵠ, nʷ = $nʷ, nˢ = $nᵛ")
+print("nˢ≤ᵠ:         ")
+n_diff = nᵠ-nᵛ
+n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
+print("nʷ≤⌊[nˢ]⌋-1:  ")
+n = floor(0.5*((1+8*nᵛ)^0.5-3))
+n_diff = 0.5*n*(n+1)-nʷ
+n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
+println(0.5*n*(n+1))
+
+logL₂w = log10(L₂_w)
+logL₂φ = log10(L₂_φ)
+logL₂Q = log10(L₂_Q)
+println("$logL₂w, $logL₂φ, $logL₂Q")
+
+
 
 

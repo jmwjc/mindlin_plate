@@ -1,6 +1,6 @@
 using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements
-import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫wwdΩ, ∫φφdΩ, ∫φwdΩ, ∫wqdΩ, ∫φmdΩ, ∫wVdΓ, ∫φMdΓ, ∫αwwdΓ, ∫αφφdΓ, L₂w, L₂φ
+import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫wwdΩ_MITC, ∫φφdΩ, ∫φwdΩ_MITC, ∫φφdΩ_MITC, ∫wqdΩ, ∫φmdΩ, ∫wVdΓ, ∫φMdΓ, ∫αwwdΓ, ∫αφφdΓ, L₂w, L₂φ
 
 using TimerOutputs 
 import Gmsh: gmsh
@@ -16,12 +16,21 @@ w₁(x,y,z) = 1.0
 w₂(x,y,z) = 1.0
 w₁₁(x,y,z) = 0.0
 w₂₂(x,y,z) = 0.0
+
 φ₁(x,y,z) = 1.0+x+y
 φ₂(x,y,z) = 1.0+x+y
 φ₁₁(x,y,z)  = 1.0
 φ₁₂(x,y,z)  = 1.0
 φ₂₁(x,y,z)  = 1.0
 φ₂₂(x,y,z)  = 1.0
+
+# φ₁(x,y,z) = 1.0
+# φ₂(x,y,z) = 1.0
+# φ₁₁(x,y,z)  = 0.0
+# φ₁₂(x,y,z)  = 0.0
+# φ₂₁(x,y,z)  = 0.0
+# φ₂₂(x,y,z)  = 0.0
+
 φ₁₁₁(x,y,z)  = 0.0
 φ₁₁₂(x,y,z)  = 0.0
 φ₂₂₁(x,y,z)  = 0.0
@@ -47,8 +56,10 @@ m₂(x,y,z) = M₁₂₁(x,y,z)+M₂₂₂(x,y,z) - Q₂(x,y,z)
 
 const to = TimerOutput()
 
+integrationOrder = 2
+
 gmsh.initialize()
-@timeit to "open msh file" gmsh.open("msh/patchtest.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_quad4_4.msh")
 @timeit to "get entities" entities = getPhysicalGroups()
 @timeit to "get nodes" nodes = get𝑿ᵢ()
 
@@ -61,13 +72,13 @@ fʷ = zeros(nʷ)
 fᵠ = zeros(2*nᵠ)
 
 @timeit to "calculate ∫κκdΩ, ∫wwdΩ, ∫φφdΩ, ∫wφdΩ" begin
-    @timeit to "get elements" elements = getElements(nodes, entities["Ω"])
+    @timeit to "get elements" elements = getElements(nodes, entities["Ω"],integrationOrder)
     prescribe!(elements, :E=>E, :ν=>ν, :h=>h, :q=>q, :m₁=>m₁, :m₂=>m₂)
     @timeit to "calculate shape functions" set∇𝝭!(elements)
-    𝑎ʷʷ = ∫wwdΩ=>elements
-    𝑎ᵠʷ = ∫φwdΩ=>elements
+    𝑎ʷʷ = ∫wwdΩ_MITC=>elements
+    𝑎ᵠʷ = ∫φwdΩ_MITC=>elements
     𝑎ᵠᵠ = [
-        ∫φφdΩ=>elements,
+        ∫φφdΩ_MITC=>elements,
         ∫κκdΩ=>elements,
     ]
     𝑓ʷ = ∫wqdΩ=>elements
@@ -79,15 +90,16 @@ fᵠ = zeros(2*nᵠ)
     @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
 
+α = 1e8
 @timeit to "calculate ∫αwwdΓ ∫αφφdΓ" begin
-    @timeit to "get elements" elements_1 = getElements(nodes, entities["Γ¹"])
-    @timeit to "get elements" elements_2 = getElements(nodes, entities["Γ²"])
-    @timeit to "get elements" elements_3 = getElements(nodes, entities["Γ³"])
-    @timeit to "get elements" elements_4 = getElements(nodes, entities["Γ⁴"])
-    prescribe!(elements_1, :α=>1e8*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-    prescribe!(elements_2, :α=>1e8*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-    prescribe!(elements_3, :α=>1e8*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-    prescribe!(elements_4, :α=>1e8*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    @timeit to "get elements" elements_1 = getElements(nodes, entities["Γ¹"],integrationOrder)
+    @timeit to "get elements" elements_2 = getElements(nodes, entities["Γ²"],integrationOrder)
+    @timeit to "get elements" elements_3 = getElements(nodes, entities["Γ³"],integrationOrder)
+    @timeit to "get elements" elements_4 = getElements(nodes, entities["Γ⁴"],integrationOrder)
+    prescribe!(elements_1, :α=>α*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_2, :α=>α*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_3, :α=>α*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_4, :α=>α*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
     @timeit to "calculate shape functions" set𝝭!(elements_1)
     @timeit to "calculate shape functions" set𝝭!(elements_2)
     @timeit to "calculate shape functions" set𝝭!(elements_3)
@@ -111,10 +123,7 @@ end
  
 gmsh.finalize()
 
-println(to)
+# println(to)
 
 println("L₂ error of w: ", L₂_w)
 println("L₂ error of φ: ", L₂_φ)
-
-
-
