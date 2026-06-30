@@ -1,50 +1,49 @@
 using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements
-import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QφdΩ, ∫Q∇wdΩ, ∫QQdΩ, ∫φwdΩ, ∫wqdΩ, ∫φmdΩ, ∫wVdΓ, ∫αwwdΓ, ∫αφφdΓ, L₂w, L₂φ, L₂Q
+import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QφdΩ, ∫Q∇wdΩ, ∫QQdΩ, ∫φwdΩ, ∫wqdΩ, ∫φmdΩ, ∫wVdΓ, ∫QwdΓ, ∫αwwdΓ, ∫αφφdΓ, L₂w, L₂φ, L₂Q
 
 using TimerOutputs, WriteVTK
 import Gmsh: gmsh
 
 E = 10.92e6
 ν = 0.3
-h = 1e-0
+h = 1e-2
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
-w(x,y,z) = 1/3*x^3*(x-1)^3*y^3*(y-1)^3-2*h^2/(5*(1-ν))*(y^3*(y-1)^3*x*(x-1)*(5*x^2-5*x+1)+x^3*(x-1)^3*y*(y-1)*(5*y^2-5*y+1))
-w₁(x,y,z) = (x-1)^2*x^2*(2*x-1)*(y-1)^3*y^3-2*h^2/(5*(1-ν))*((20*x^3-30*x^2+12*x-1)*(y-1)^3*y^3+3*(x-1)^2*x^2*(2*x-1)*(y-1)*y*(5*y^2-5*y+1))
-w₂(x,y,z) = (x-1)^3*x^3*(y-1)^2*y^2*(2*y-1)-2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2-5*x+1)*(y-1)^2*y^2*(2*y-1)+x^3*(x-1)^3*(20*y^3-30*y^2+12*y-1))
-φ₁(x,y,z) = y^3*(y-1)^3*x^2*(x-1)^2*(2*x-1)
-φ₂(x,y,z) = x^3*(x-1)^3*y^2*(y-1)^2*(2*y-1)
-q(x,y,z) = E*h^3/(12*(1-ν^2))*(12*y*(y-1)*(5*x^2-5*x+1)*(2*y^2*(y-1)^2+x*(x-1)*(5*y^2-5*y+1))+12*x*(x-1)*(5*y^2-5*y+1)*(2*x^2*(x-1)^2+y*(y-1)*(5*x^2-5*x+1)))
+w(x,y,z) = - (x^4*y - x*y^4 + x^3*y^2 - x^2*y^3)/6/Dᵇ + (x^3 + 3*x^2*y - 3*x*y^2 - y^3)/3/Dˢ
+w₁(x,y,z) = - (4*x^3*y - y^4 + 3*x^2*y^2 - 2*x*y^3)/6/Dᵇ + (x^2 + 2*x*y - y^2)/Dˢ
+w₂(x,y,z) = - (x^4 - 4*x*y^3 + 2*x^3*y - 3*x^2*y^2)/6/Dᵇ + (x^2 - 2*x*y - y^2)/Dˢ
+w₁₁(x,y,z) = - (6*x^2*y + 3*x*y^2 - y^3)/3/Dᵇ + 2*(x + y)/Dˢ
+w₂₂(x,y,z) = - (- 6*x*y^2 + x^3 - 3*x^2*y)/3/Dᵇ + 2*(- x - y)/Dˢ
+φ₁(x,y,z) = - (4*x^3*y - y^4 + 3*x^2*y^2 - 2*x*y^3)/6/Dᵇ
+φ₂(x,y,z) = - (x^4 - 4*x*y^3 + 2*x^3*y - 3*x^2*y^2)/6/Dᵇ
+φ₁₁(x,y,z) = - (6*x^2*y + 3*x*y^2 - y^3)/3/Dᵇ
+φ₁₂(x,y,z) = - (2*x^3 - 2*y^3 + 3*x^2*y - 3*x*y^2)/3/Dᵇ
+φ₂₁(x,y,z) = - (2*x^3 - 2*y^3 + 3*x^2*y - 3*x*y^2)/3/Dᵇ
+φ₂₂(x,y,z) = - (- 6*x*y^2 + x^3 - 3*x^2*y)/3/Dᵇ
+φ₁₁₁(x,y,z) = - (4*x*y + y^2)/Dᵇ
+φ₁₁₂(x,y,z) = - (2*x^2 + 2*x*y - y^2)/Dᵇ
+φ₂₂₁(x,y,z) = - (- 2*y^2 + x^2 - 2*x*y)/Dᵇ
+φ₂₂₂(x,y,z) = - (- 4*x*y - x^2)/Dᵇ
+φ₁₂₁(x,y,z) = - (2*x^2 + 2*x*y - y^2)/Dᵇ
+φ₁₂₂(x,y,z) = - (- 2*y^2 + x^2 - 2*x*y)/Dᵇ
+# Q₁(x,y,z) = (x^2 + 2*x*y - y^2)
+# Q₂(x,y,z) = (x^2 - 2*x*y - y^2)
+# q(x,y,z) = 0.0
 
-Q₁(x,y,z) = Dˢ*(w₁(x,y,z)-φ₁(x,y,z))
-Q₂(x,y,z) = Dˢ*(w₂(x,y,z)-φ₂(x,y,z))
-
-test(x,y) = -2*h^2/(5*(1-ν))*((20*x^3-30*x^2+12*x-1)*(y-1)^3*y^3+3*(x-1)^2*x^2*(2*x-1)*(y-1)*y*(5*y^2-5*y+1))
-println(Q₁(0.2,0.2,0.0))
-println(w₁(0.2,0.2,0.0))
-println(φ₁(0.2,0.2,0.0))
-println(test(rand(),rand()))
-
-# w(x,y,z) = 1.0
-# w₁(x,y,z) = 0.0
-# w₂(x,y,z) = 0.0
-# w₁₁(x,y,z) = 0.0
-# w₂₂(x,y,z) = 0.0
+# w(x,y,z) = 1/3*x^3*(x-1)^3*y^3*(y-1)^3-2*h^2/(5*(1-ν))*(y^3*(y-1)^3*x*(x-1)*(5*x^2-5*x+1)+x^3*(x-1)^3*y*(y-1)*(5*y^2-5*y+1))
+# w₁(x,y,z) = (x-1)^2*x^2*(2*x-1)*(y-1)^3*y^3-2*h^2/(5*(1-ν))*((20*x^3-30*x^2+12*x-1)*(y-1)^3*y^3+3*(x-1)^2*x^2*(2*x-1)*(y-1)*y*(5*y^2-5*y+1))
+# w₂(x,y,z) = (x-1)^3*x^3*(y-1)^2*y^2*(2*y-1)-2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2-5*x+1)*(y-1)^2*y^2*(2*y-1)+x^3*(x-1)^3*(20*y^3-30*y^2+12*y-1))
+# φ₁(x,y,z) = y^3*(y-1)^3*x^2*(x-1)^2*(2*x-1)
+# φ₂(x,y,z) = x^3*(x-1)^3*y^2*(y-1)^2*(2*y-1)
+# q(x,y,z) = E*h^3/(12*(1-ν^2))*(12*y*(y-1)*(5*x^2-5*x+1)*(2*y^2*(y-1)^2+x*(x-1)*(5*y^2-5*y+1))+12*x*(x-1)*(5*y^2-5*y+1)*(2*x^2*(x-1)^2+y*(y-1)*(5*x^2-5*x+1)))
 
 # w(x,y,z) = 1.0+x+y
 # w₁(x,y,z) = 1.0
 # w₂(x,y,z) = 1.0
 # w₁₁(x,y,z) = 0.0
 # w₂₂(x,y,z) = 0.0
-
-# φ₁(x,y,z) = 1.0
-# φ₂(x,y,z) = 1.0
-# φ₁₁(x,y,z)  = 0.0
-# φ₁₂(x,y,z)  = 0.0
-# φ₂₁(x,y,z)  = 0.0
-# φ₂₂(x,y,z)  = 0.0
 
 # φ₁(x,y,z) = 1.0+x+y
 # φ₂(x,y,z) = 1.0+x+y
@@ -60,29 +59,30 @@ println(test(rand(),rand()))
 # φ₁₂₁(x,y,z)  = 0.0
 # φ₁₂₂(x,y,z)  = 0.0
 
-# M₁₁(x,y,z)= -Dᵇ*(φ₁₁(x,y,z)+ν*φ₂₂(x,y,z))
-# M₁₂(x,y,z)= -Dᵇ*(1-ν)*0.5*(φ₁₂(x,y,z)+φ₂₁(x,y,z))
-# M₂₂(x,y,z)= -Dᵇ*(ν*φ₁₁(x,y,z)+φ₂₂(x,y,z))
-# M₁₁₁(x,y,z)= -Dᵇ*(φ₁₁₁(x,y,z)+ν*φ₂₂₁(x,y,z))
-# M₁₂₂(x,y,z)= -Dᵇ*(1-ν)*φ₁₂₂(x,y,z)
-# M₁₂₁(x,y,z)= -Dᵇ*(1-ν)*φ₁₂₁(x,y,z)
-# M₂₂₂(x,y,z)= -Dᵇ*(ν*φ₁₁₂(x,y,z)+φ₂₂₂(x,y,z))
+M₁₁(x,y,z)= -Dᵇ*(φ₁₁(x,y,z)+ν*φ₂₂(x,y,z))
+M₁₂(x,y,z)= -Dᵇ*(1-ν)*0.5*(φ₁₂(x,y,z)+φ₂₁(x,y,z))
+M₂₂(x,y,z)= -Dᵇ*(ν*φ₁₁(x,y,z)+φ₂₂(x,y,z))
+M₁₁₁(x,y,z)= -Dᵇ*(φ₁₁₁(x,y,z)+ν*φ₂₂₁(x,y,z))
+M₁₂₂(x,y,z)= -Dᵇ*(1-ν)*φ₁₂₂(x,y,z)
+M₁₂₁(x,y,z)= -Dᵇ*(1-ν)*φ₁₂₁(x,y,z)
+M₂₂₂(x,y,z)= -Dᵇ*(ν*φ₁₁₂(x,y,z)+φ₂₂₂(x,y,z))
 
-# Q₁(x,y,z) = Dˢ*(w₁(x,y,z)-φ₁(x,y,z))
-# Q₂(x,y,z) = Dˢ*(w₂(x,y,z)-φ₂(x,y,z))
-# Q₁₁(x,y,z) = Dˢ*(w₁₁(x,y,z)-φ₁₁(x,y,z))
-# Q₂₂(x,y,z) = Dˢ*(w₂₂(x,y,z)-φ₂₂(x,y,z))
-# q(x,y,z)=-Q₁₁(x,y,z)-Q₂₂(x,y,z)
-# m₁(x,y,z) = M₁₁₁(x,y,z)+M₁₂₂(x,y,z) - Q₁(x,y,z)
-# m₂(x,y,z) = M₁₂₁(x,y,z)+M₂₂₂(x,y,z) - Q₂(x,y,z)
+Q₁(x,y,z) = Dˢ*(w₁(x,y,z)-φ₁(x,y,z))
+Q₂(x,y,z) = Dˢ*(w₂(x,y,z)-φ₂(x,y,z))
+Q₁₁(x,y,z) = Dˢ*(w₁₁(x,y,z)-φ₁₁(x,y,z))
+Q₂₂(x,y,z) = Dˢ*(w₂₂(x,y,z)-φ₂₂(x,y,z))
+q(x,y,z)=-Q₁₁(x,y,z)-Q₂₂(x,y,z)
+m₁(x,y,z) = M₁₁₁(x,y,z)+M₁₂₂(x,y,z) - Q₁(x,y,z)
+m₂(x,y,z) = M₁₂₁(x,y,z)+M₂₂₂(x,y,z) - Q₂(x,y,z)
 
 integrationOrder = 2
-ndiv = 16
+ndiv = 32
 
 const to = TimerOutput()
 
 gmsh.initialize()
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv.msh")
+# @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_100_$ndiv.msh")
 @timeit to "get entities" entities = getPhysicalGroups()
 @timeit to "get nodes" nodes = get𝑿ᵢ()
 @timeit to "get elements" elements_φ = getElements(nodes, entities["Ω"], integrationOrder)
@@ -149,9 +149,11 @@ end
     @timeit to "calculate shape functions" set𝝭!(elements_2_φ)
     @timeit to "calculate shape functions" set𝝭!(elements_3_φ)
     @timeit to "calculate shape functions" set𝝭!(elements_4_φ)
+    𝑎 = ∫QwdΓ => (elements_1_φ∪elements_2_φ∪elements_3_φ∪elements_4_φ,elements_1_w∪elements_2_w∪elements_3_w∪elements_4_w)
     𝑎ʷ = ∫αwwdΓ=>elements_1_w∪elements_2_w∪elements_3_w∪elements_4_w
-    @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
     𝑎ᵠ = ∫αφφdΓ=>elements_1_φ∪elements_2_φ∪elements_3_φ∪elements_4_φ
+    @timeit to "assemble" 𝑎(kˢʷ,fˢ)
+    # @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
     @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
 end
 
