@@ -2,13 +2,13 @@ using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements
 import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂w, L₂φ, L₂Q
 
-using TimerOutputs, WriteVTK 
+using TimerOutputs, LinearAlgebra
 import Gmsh: gmsh
 include("cal_area_support.jl")
 
 E = 10.92e6
 ν = 0.3
-h = 1e-3
+h = 1e-6
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -30,12 +30,8 @@ const to = TimerOutput()
 # ndiv = 32, nʷ = 977, 1034, 1051, 1179
 ndiv = 32
 # ndiv_w = Int(ndiv/2)
-nʷ = 1326
+nʷ = 1034
 gmsh.initialize()
-# @timeit to "open msh file" gmsh.open("msh/patchtest_3.msh")
-# @timeit to "get nodes" nodes_s = get𝑿ᵢ()
-
-# @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_irregular_$nʷ.msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()
 xʷ = nodes_w.x
@@ -124,92 +120,51 @@ end
     @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
     𝑎ˢ = ∫QwdΓ=>(elements_1∪elements_2∪elements_3∪elements_4,elements_w_1∪elements_w_2∪elements_w_3∪elements_w_4)
     @timeit to "assemble" 𝑎ˢ(kˢʷ,fˢ)
-    # 𝑎ʷ = ∫αwwdΓ=>elements_1∪elements_2∪elements_3∪elements_4
-    # @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
-end
-
-# dᵠ = zeros(2*nᵠ)
-# dˢ = zeros(2*nˢ)
-# dʷ = zeros(nʷ)
-# for node in nodes
-#     x = node.x
-#     y = node.y
-#     z = node.z
-#     dᵠ[2*node.𝐼-1] = φ₁(x,y,z)
-#     dᵠ[2*node.𝐼]   = φ₂(x,y,z)
-#     dˢ[2*node.𝐼-1] = Q₁(x,y,z)
-#     dˢ[2*node.𝐼]   = Q₂(x,y,z)
-#     dʷ[node.𝐼] = w(x,y,z)
-# end
-# println(kˢˢ*dˢ)
-# println(kˢʷ*dʷ)
-# println(kˢˢ*dˢ + kˢʷ*dʷ)
-# println(kˢʷ*ones(nʷ).-fˢ)
-# println(kᵠᵠ*dᵠ + kˢᵠ'*dˢ - fᵠ)
-# println(kˢˢ*dˢ + kˢᵠ*dᵠ + kˢʷ*dʷ - fˢ)
-# println(kˢʷ'*dˢ + kʷʷ*dʷ - fʷ)
-# println(kˢᵠ*dᵠ)
-# println(kˢʷ*dʷ)
-# println(kˢˢ*dˢ)
-# println(kˢˢ*dˢ + kˢʷ*dʷ)
-
-# println([kᵠᵠ kᵠʷ kˢᵠ';kᵠʷ' kʷʷ kˢʷ';kˢᵠ kˢʷ kˢˢ]*[dᵠ;dʷ;dˢ] .- [fᵠ;fʷ;fˢ])
-@timeit to "solve" d = [kᵠᵠ kᵠʷ kˢᵠ';kᵠʷ' kʷʷ kˢʷ';kˢᵠ kˢʷ kˢˢ]\[fᵠ;fʷ;fˢ]
-# println([kᵠᵠ kᵠʷ kˢᵠ';kᵠʷ' kʷʷ kˢʷ';kˢᵠ kˢʷ kˢˢ]*d .- [fᵠ;fʷ;fˢ])
-push!(nodes,:d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ], :q₁=>d[2*nᵠ+nʷ+1:2:end], :q₂=>d[2*nᵠ+nʷ+2:2:end])
-push!(nodes_w,:d=>d[2*nᵠ+1:2*nᵠ+nʷ])
-
-@timeit to "calculate error" begin
-    @timeit to "get elements" elements = getElements(nodes_w, entities["Ω"], type, 10, sp)
-    prescribe!(elements, :E=>E, :ν=>ν, :h=>h, :w=>w)
-    @timeit to "calculate shape functions" set𝝭!(elements)
-    L₂_w = L₂w(elements)
-    @timeit to "get elements" elements = getElements(nodes, entities["Ω"], 10)
-    prescribe!(elements, :E=>E, :ν=>ν, :h=>h, :φ₁=>φ₁, :φ₂=>φ₂, :Q₁=>Q₁, :Q₂=>Q₂)
-    @timeit to "calculate shape functions" set𝝭!(elements)
-    L₂_φ = L₂φ(elements)
-    L₂_Q = L₂Q(elements)
 end
 
 gmsh.finalize()
 
-# points = zeros(3, nˢ)
-# for node in nodes
-#     I = node.𝐼
-#     points[1,I] = node.x
-#     points[2,I] = node.y
-#     points[3,I] = node.z
-# end
-# cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE, [node.𝐼 for node in elm.𝓒]) for elm in elements]
-# cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE_STRIP, [node.𝐼 for node in elm.𝓒]) for elm in elements]
-# vtk_grid("vtk/square.vtu", points, cells) do vtk
-#     vtk["Q₁"] = [node.q₁ for node in nodes]
-#     vtk["Q₂"] = [node.q₂ for node in nodes]
-#     vtk["Q̄₁"] = [Q₁(node.x,node.y,node.z) for node in nodes]
-#     vtk["Q̄₂"] = [Q₂(node.x,node.y,node.z) for node in nodes]
-# end
-
-println(to)
-
-# println("L₂ error of w: ", L₂_w)
-# println("L₂ error of φ: ", L₂_φ)
-# println("L₂ error of Q: ", L₂_Q)
-
 println("h = $h, Dˢ = $Dˢ, Dᵇ = $Dᵇ, nᵠ = $nᵠ, nʷ = $nʷ, nˢ = $nˢ")
-print("nˢ≤ᵠ:         ")
-n_diff = nᵠ-nˢ
-n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
-print("nʷ≤⌊[nˢ]⌋-1:  ")
+
+k̃ᵠᵠ = - kˢᵠ'*(kˢˢ\kˢᵠ)
+k̃ʷʷ = - kˢʷ'*(kˢˢ\kˢʷ)
+k̃ᵠʷ = - kˢᵠ'*(kˢˢ\kˢʷ)
+# ─── Eigen Test For βʷ ────────────────────────────────────
+print("nʷ≤⌊[nˢ]⌋-1:         ")
 n = floor(0.5*((1+8*nˢ)^0.5-3))
 n_diff = 0.5*n*(n+1)-nʷ
 n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
-println(0.5*n*(n+1))
+βʷ² = eigvals(k̃ʷʷ)
+βʷ² = real.(βʷ²)
+βʷ²⁺ = βʷ²[βʷ² .≥ 1e6*eps()]
+βʷ⁺ = βʷ²⁺.^0.5
+nʷ⁺ = length(βʷ⁺)
+# println(βʷ⁺)
+βʷ⁺ = min(βʷ⁺...)
+println("βʷ⁺ = $βʷ⁺, nʷ⁺ = $nʷ⁺")
 
-logL₂w = log10(L₂_w)
-logL₂φ = log10(L₂_φ)
-logL₂Q = log10(L₂_Q)
-println("$logL₂w, $logL₂φ, $logL₂Q")
 
+print("2nˢ≤nʷ+2nᵠ-min(nʷ,n):")
+n = floor(0.5*((1+8*nᵠ)^0.5-3))
+# n = ceil(0.5*((1+8*nᵠ)^0.5-3))
+n = 0.5*(n+2)*(n+3)
+n_diff = 0.5*(nʷ+2nᵠ-min(nʷ,n))-nˢ
+n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
+println("nʷ = $nʷ, n = $n")
 
+# βᵞ² = eigvals(-k̃ᵠᵠ-k̃ᵠʷ*(k̃ʷʷ\k̃ᵠʷ'),kᵠᵠ)
+βᵞ² = eigvals(k̃ᵠᵠ-k̃ᵠʷ*(k̃ʷʷ\k̃ᵠʷ'))
+# βᵞ² = eigvals([-kˢᵠ'*(kˢˢ\kˢᵠ) k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ],[kᵠᵠ kᵠʷ;kᵠʷ' kʷʷ])
+# βᵞ² = eigvals([-kˢᵠ'*(kˢˢ\kˢᵠ) k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ])
+# βᵞ² = eigvals(-kˢᵠ'*(kˢˢ\kˢᵠ),k̃ᵠᵠ)
+# βᵞ² = eigvals(k̃ᵠᵠ)
+βᵞ² = real.(βᵞ²)
+βᵞ²⁺ = βᵞ²[βᵞ² .≥ 1e7*eps()]
+βᵞ⁺ = βᵞ²⁺.^0.5
+nᵞ⁺ = length(βᵞ⁺)
+βᵞ⁺ = min(βᵞ⁺...)
+println("βᵞ⁺ = $βᵞ⁺, nᵞ⁺ = $nᵞ⁺")
 
-
+logβʷ⁺ = log10(βʷ⁺)
+logβᵞ⁺ = log10(βᵞ⁺)
+println("$logβʷ⁺, $logβᵞ⁺")

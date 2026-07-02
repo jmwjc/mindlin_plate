@@ -204,28 +204,28 @@ end
     @timeit to "assemble" 𝑎ʷ(kᵅʷʷ, fᵅʷ)
 end
 
-# @timeit to "calculate ∫MφdΓ" begin
-#     @timeit to "get elements" elements_m_1 = getElements(entities["Γ¹"], entities["Γ"], elements_m_Γ)
-#     @timeit to "get elements" elements_m_2 = getElements(entities["Γ²"], entities["Γ"], elements_m_Γ)
-#     @timeit to "get elements" elements_m_3 = getElements(entities["Γ³"], entities["Γ"], elements_m_Γ)
-#     @timeit to "get elements" elements_m_4 = getElements(entities["Γ⁴"], entities["Γ"], elements_m_Γ)
-#     @timeit to "get elements" elements_φ_1 = getElements(nodes_φ, entities["Γ¹"], eval(type_φ), integrationOrder, sp_φ, normal=true)
-#     @timeit to "get elements" elements_φ_2 = getElements(nodes_φ, entities["Γ²"], eval(type_φ), integrationOrder, sp_φ, normal=true)
-#     @timeit to "get elements" elements_φ_3 = getElements(nodes_φ, entities["Γ³"], eval(type_φ), integrationOrder, sp_φ, normal=true)
-#     @timeit to "get elements" elements_φ_4 = getElements(nodes_φ, entities["Γ⁴"], eval(type_φ), integrationOrder, sp_φ, normal=true)
-#     prescribe!(elements_φ_1, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-#     prescribe!(elements_φ_2, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-#     prescribe!(elements_φ_3, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-#     prescribe!(elements_φ_4, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-#     @timeit to "calculate shape functions" set𝝭!(elements_φ_1)
-#     @timeit to "calculate shape functions" set𝝭!(elements_φ_2)
-#     @timeit to "calculate shape functions" set𝝭!(elements_φ_3)
-#     @timeit to "calculate shape functions" set𝝭!(elements_φ_4)
-#     𝑎 = ∫MφdΓ => (elements_m_1 ∪ elements_m_2 ∪ elements_m_3 ∪ elements_m_4, elements_φ_1 ∪ elements_φ_2 ∪ elements_φ_3 ∪ elements_φ_4)
-#     𝑎ᵅ = ∫αφφdΓ => elements_φ_1 ∪ elements_φ_2 ∪ elements_φ_3 ∪ elements_φ_4
-#     @timeit to "assemble" 𝑎(kᵐᵠ,fᵐ)
-#     @timeit to "assemble" 𝑎ᵅ(kᵅᵠᵠ, fᵅᵠ)
-# end
+@timeit to "calculate ∫MφdΓ" begin
+    @timeit to "get elements" elements_m_1 = getElements(entities["Γ¹"], entities["Γ"], elements_m_Γ)
+    @timeit to "get elements" elements_m_2 = getElements(entities["Γ²"], entities["Γ"], elements_m_Γ)
+    @timeit to "get elements" elements_m_3 = getElements(entities["Γ³"], entities["Γ"], elements_m_Γ)
+    @timeit to "get elements" elements_m_4 = getElements(entities["Γ⁴"], entities["Γ"], elements_m_Γ)
+    @timeit to "get elements" elements_φ_1 = getElements(nodes_φ, entities["Γ¹"], eval(type_φ), integrationOrder, sp_φ, normal=true)
+    @timeit to "get elements" elements_φ_2 = getElements(nodes_φ, entities["Γ²"], eval(type_φ), integrationOrder, sp_φ, normal=true)
+    @timeit to "get elements" elements_φ_3 = getElements(nodes_φ, entities["Γ³"], eval(type_φ), integrationOrder, sp_φ, normal=true)
+    @timeit to "get elements" elements_φ_4 = getElements(nodes_φ, entities["Γ⁴"], eval(type_φ), integrationOrder, sp_φ, normal=true)
+    prescribe!(elements_φ_1, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_φ_2, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_φ_3, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_φ_4, :α=>αᵠ, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    @timeit to "calculate shape functions" set𝝭!(elements_φ_1)
+    @timeit to "calculate shape functions" set𝝭!(elements_φ_2)
+    @timeit to "calculate shape functions" set𝝭!(elements_φ_3)
+    @timeit to "calculate shape functions" set𝝭!(elements_φ_4)
+    𝑎 = ∫MφdΓ => (elements_m_1 ∪ elements_m_2 ∪ elements_m_3 ∪ elements_m_4, elements_φ_1 ∪ elements_φ_2 ∪ elements_φ_3 ∪ elements_φ_4)
+    𝑎ᵅ = ∫αφφdΓ => elements_φ_1 ∪ elements_φ_2 ∪ elements_φ_3 ∪ elements_φ_4
+    @timeit to "assemble" 𝑎(kᵐᵠ,fᵐ)
+    @timeit to "assemble" 𝑎ᵅ(kᵅᵠᵠ, fᵅᵠ)
+end
 
 # ──────────────────────────────────────────────────────────
 # dᵠ = zeros(2*nᵠ)
