@@ -22,7 +22,8 @@ import BenchmarkExample: PatchTest
 # end
 # for n in 0.061:0.001:0.1
 # for n in 2:32
-PatchTest.generateMsh("msh/patchtest_tri3_irregular_.msh", lc = 0.032, order=1, quad=false)
+# PatchTest.generateMsh("msh/patchtest_tri3_irregular_.msh", lc=0.041, order=1, quad=false)
+PatchTest.generateMsh("msh/patchtest_quad4_irregular_.msh", lc=0.039, order=1, quad=true)
 # end
 
 # for n in 2:64

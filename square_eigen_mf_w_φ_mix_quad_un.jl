@@ -77,14 +77,14 @@ type_w = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_φ = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_Q = :quad4
 type_M = :(PiecewisePolynomial{:Linear2D})
-ndiv_φ = 15
-# ndiv_w = 30
-# ndiv_q = 10
+ndiv_φ = 27 
+# ndiv_w = 18
+# ndiv_q = 1
 sʷ = 1.5
 sᵠ = 1.5
-for ndiv_w = 10:30
+for ndiv_w = 10:31
  XLSX.openxlsx("xls/square_eigen_$(ndiv_φ)_quad4_$(ndiv_w)_un.xlsx", mode="w") do xf
-for ndiv_q = 10:30
+for ndiv_q = 10:31
 row = ndiv_q
 # ─── Deflection W ─────────────────────────────────────────
 @timeit to "open msh file" gmsh.open("msh/patchtest_un_quad4_$ndiv_w.msh")
