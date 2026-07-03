@@ -1,6 +1,6 @@
 using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements
-import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫wwdΩ, ∫φφdΩ, ∫φwdΩ, ∫wqdΩ, ∫φmdΩ, ∫wVdΓ, ∫φMdΓ, ∫αwwdΓ, ∫αφφdΓ, L₂w, L₂φ
+import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫∇w∇wdΩ, ∫φφdΩ, ∫φwdΩ, ∫wqdΩ, ∫φmdΩ, ∫wVdΓ, ∫φMdΓ, ∫αwwdΓ, ∫αφφdΓ, L₂w, L₂φ
 
 using TimerOutputs 
 import Gmsh: gmsh
@@ -64,7 +64,7 @@ fᵠ = zeros(2*nᵠ)
     @timeit to "get elements" elements = getElements(nodes, entities["Ω"])
     prescribe!(elements, :E=>E, :ν=>ν, :h=>h, :q=>q, :m₁=>m₁, :m₂=>m₂)
     @timeit to "calculate shape functions" set∇𝝭!(elements)
-    𝑎ʷʷ = ∫wwdΩ=>elements
+    𝑎ʷʷ = ∫∇w∇wdΩ=>elements
     𝑎ᵠʷ = ∫φwdΩ=>elements
     𝑎ᵠᵠ = [
         ∫φφdΩ=>elements,

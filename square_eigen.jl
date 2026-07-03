@@ -5,7 +5,7 @@ import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫wwdΩ, ∫φφdΩ, ∫φwdΩ,
 using TimerOutputs, LinearAlgebra
 import Gmsh: gmsh
 
-E = 1e6
+E = 10.92e6
 ν = 0.3
 h = 1e-3
 Dᵇ = E*h^3/12/(1-ν^2)

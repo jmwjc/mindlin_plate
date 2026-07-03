@@ -2,12 +2,12 @@ using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements
 import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂w, L₂φ, L₂Q
 
-using TimerOutputs, WriteVTK 
+using TimerOutputs, LinearAlgebra
 import Gmsh: gmsh
 
 E = 10.92e6
 ν = 0.3
-h = 1e-5
+h = 1e-0
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -21,28 +21,38 @@ q(x,y,z) = E*h^3/(12*(1-ν^2))*(12*y*(y-1)*(5*x^2-5*x+1)*(2*y^2*(y-1)^2+x*(x-1)*
 Q₁(x,y,z) = Dˢ*(w₁(x,y,z)-φ₁(x,y,z))
 Q₂(x,y,z) = Dˢ*(w₂(x,y,z)-φ₂(x,y,z))
 
+# w(x,y,z) = 1.0+x+y
+# w₁(x,y,z) = 1.0
+# w₂(x,y,z) = 1.0
+
+# φ₁(x,y,z) = 1.0+x+y
+# φ₂(x,y,z) = 1.0+x+y
+
+# Q₁(x,y,z) = Dˢ*(w₁(x,y,z)-φ₁(x,y,z))
+# Q₂(x,y,z) = Dˢ*(w₂(x,y,z)-φ₂(x,y,z))
+
+# q(x,y,z) = 0.0
 const to = TimerOutput()
 
+αʷ = 1e3
+αᵠ = 1e8
 gmsh.initialize()
-# @timeit to "open msh file" gmsh.open("msh/patchtest_3.msh")
-# @timeit to "get nodes" nodes_s = get𝑿ᵢ()
-
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_16.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_4.msh")
 @timeit to "get entities" entities = getPhysicalGroups()
 @timeit to "get nodes" nodes = get𝑿ᵢ()
 
 nʷ = length(nodes)
 nᵠ = length(nodes)
-nᵛ = length(nodes)
+nˢ = length(nodes)
 kʷʷ = zeros(nʷ,nʷ)
 kᵠᵠ = zeros(2*nᵠ,2*nᵠ)
-kᵛᵛ = zeros(2*nᵛ,2*nᵛ)
+kˢˢ = zeros(2*nˢ,2*nˢ)
 kᵠʷ = zeros(2*nᵠ,nʷ)
-kᵛʷ = zeros(2*nᵛ,nʷ)
-kᵛᵠ = zeros(2*nᵛ,2*nᵠ)
+kˢʷ = zeros(2*nˢ,nʷ)
+kˢᵠ = zeros(2*nˢ,2*nᵠ)
 fʷ = zeros(nʷ)
 fᵠ = zeros(2*nᵠ)
-fᵛ = zeros(2*nᵛ)
+fˢ = zeros(2*nˢ)
 
 integrationOrder = 2
 @timeit to "calculate ∫κκdΩ" begin
@@ -52,17 +62,17 @@ integrationOrder = 2
     @timeit to "calculate shape functions" set∇𝝭!(elements)
     @timeit to "calculate shape functions" set𝝭!(elements_Γ)
     𝑎ᵠᵠ = ∫κκdΩ=>elements
-    𝑎ᵛᵠ = ∫QφdΩ=>elements
-    𝑎ᵛᵛ = ∫QQdΩ=>elements
-    𝑎ᵛʷ = [
+    𝑎ˢᵠ = ∫QφdΩ=>elements
+    𝑎ˢˢ = ∫QQdΩ=>elements
+    𝑎ˢʷ = [
         ∫∇QwdΩ=>elements,
         ∫QwdΓ=>elements_Γ,
     ]
     𝑓ʷ = ∫wqdΩ=>elements
-    # @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
-    @timeit to "assemble" 𝑎ᵛᵛ(kᵛᵛ)
-    # @timeit to "assemble" 𝑎ᵛᵠ(kᵛᵠ)
-    @timeit to "assemble" 𝑎ᵛʷ(kᵛʷ)
+    @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
+    @timeit to "assemble" 𝑎ˢˢ(kˢˢ)
+    @timeit to "assemble" 𝑎ˢᵠ(kˢᵠ)
+    @timeit to "assemble" 𝑎ˢʷ(kˢʷ)
     @timeit to "assemble" 𝑓ʷ(fʷ)
 end
 
@@ -71,24 +81,28 @@ end
     @timeit to "get elements" elements_2 = getElements(nodes, entities["Γ²"], integrationOrder, normal=true)
     @timeit to "get elements" elements_3 = getElements(nodes, entities["Γ³"], integrationOrder, normal=true)
     @timeit to "get elements" elements_4 = getElements(nodes, entities["Γ⁴"], integrationOrder, normal=true)
-    prescribe!(elements_1, :α=>1e8*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-    prescribe!(elements_2, :α=>1e8*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-    prescribe!(elements_3, :α=>1e8*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-    prescribe!(elements_4, :α=>1e8*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_1, :α=>αᵠ*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_2, :α=>αᵠ*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_3, :α=>αᵠ*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_4, :α=>αᵠ*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
     @timeit to "calculate shape functions" set𝝭!(elements_1)
     @timeit to "calculate shape functions" set𝝭!(elements_2)
     @timeit to "calculate shape functions" set𝝭!(elements_3)
     @timeit to "calculate shape functions" set𝝭!(elements_4)
     𝑎ᵠ = ∫αφφdΓ=>elements_1∪elements_2∪elements_3∪elements_4
     @timeit to "assemble" 𝑎ᵠ(kᵠᵠ,fᵠ)
-    𝑎ᵛ = ∫QwdΓ=>elements_1∪elements_2∪elements_3∪elements_4
-    @timeit to "assemble" 𝑎ᵛ(kᵛʷ,fᵛ)
-    # 𝑎ʷ = ∫αwwdΓ=>elements_1∪elements_2∪elements_3∪elements_4
-    # @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
+    𝑎ˢ = ∫QwdΓ=>elements_1∪elements_2∪elements_3∪elements_4
+    @timeit to "assemble" 𝑎ˢ(kˢʷ,fˢ)
+    prescribe!(elements_1, :α=>αʷ*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_2, :α=>αʷ*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_3, :α=>αʷ*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    prescribe!(elements_4, :α=>αʷ*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
+    𝑎ʷ = ∫αwwdΓ=>elements_1∪elements_2∪elements_3∪elements_4
+    @timeit to "assemble" 𝑎ʷ(kʷʷ,fʷ)
 end
 
 dᵠ = zeros(2*nᵠ)
-dᵛ = zeros(2*nᵛ)
+dˢ = zeros(2*nˢ)
 dʷ = zeros(nʷ)
 for node in nodes
     x = node.x
@@ -96,30 +110,36 @@ for node in nodes
     z = node.z
     dᵠ[2*node.𝐼-1] = φ₁(x,y,z)
     dᵠ[2*node.𝐼]   = φ₂(x,y,z)
-    dᵛ[2*node.𝐼-1] = Q₁(x,y,z)
-    dᵛ[2*node.𝐼]   = Q₂(x,y,z)
+    dˢ[2*node.𝐼-1] = Q₁(x,y,z)
+    dˢ[2*node.𝐼]   = Q₂(x,y,z)
     dʷ[node.𝐼] = w(x,y,z)
 end
-# println(kᵛᵛ*dᵛ)
-# println(kᵛʷ*dʷ)
-# println(kᵛᵛ*dᵛ + kᵛʷ*dʷ)
-# println(kᵛʷ*ones(nʷ).-fᵛ)
-# println(kᵠᵠ*dᵠ + kᵛᵠ'*dᵛ - fᵠ)
-# println(kᵛᵛ*dᵛ + kᵛᵠ*dᵠ + kᵛʷ*dʷ - fᵛ)
-# println(kᵛʷ'*dᵛ + kʷʷ*dʷ - fʷ)
-# println(kᵛᵠ*dᵠ)
-# println(kᵛʷ*dʷ)
-# println(kᵛᵛ*dᵛ)
-# println(kᵛᵛ*dᵛ + kᵛʷ*dʷ)
+# println(kˢˢ*dˢ)
+# println(kˢʷ*dʷ)
+# println(kˢˢ*dˢ + kˢʷ*dʷ)
+# println(kˢʷ*ones(nʷ).-fˢ)
+# println(kᵠᵠ*dᵠ + kˢᵠ'*dˢ - fᵠ)
+# println(kˢˢ*dˢ + kˢᵠ*dᵠ + kˢʷ*dʷ - fˢ)
+# println(kˢʷ'*dˢ + kʷʷ*dʷ - fʷ)
+# println(norm(kᵠᵠ*dᵠ + kˢᵠ'*dˢ - fᵠ))
+# println(norm(kˢˢ*dˢ + kˢᵠ*dᵠ + kˢʷ*dʷ - fˢ))
+# println(norm(kˢʷ'*dˢ + kʷʷ*dʷ - fʷ))
+# println(kᵠᵠ*dᵠ + kˢᵠ'*dˢ - fᵠ)
+# println(kᵠᵠ*dᵠ-fᵠ)
+# println(kᵠᵠ*dᵠ)
+# println(fᵠ)
+# println(kˢʷ'*dˢ)
+# println(kˢᵠ*dᵠ)
+# println(kˢʷ*dʷ)
+# println(kˢˢ*dˢ)
+# println(kˢˢ*dˢ + kˢʷ*dʷ)
 
-# println([kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]*[dᵠ;dʷ;dᵛ] .- [fᵠ;fʷ;fᵛ])
-@timeit to "solve" d = [kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]\[fᵠ;fʷ;fᵛ]
-# println([kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]*d .- [fᵠ;fʷ;fᵛ])
+@timeit to "solve" d = [kᵠᵠ kᵠʷ kˢᵠ';kᵠʷ' kʷʷ kˢʷ';kˢᵠ kˢʷ kˢˢ]\[fᵠ;fʷ;fˢ]
 push!(nodes,:d=>d[2*nᵠ+1:2*nᵠ+nʷ], :d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ], :q₁=>d[2*nᵠ+nʷ+1:2:end], :q₂=>d[2*nᵠ+nʷ+2:2:end])
 
 @timeit to "calculate error" begin
     @timeit to "get elements" elements = getElements(nodes, entities["Ω"], 10)
-    prescribe!(elements, :E=>E, :ν=>ν, :h=>h, :u=>w, :φ₁=>φ₁, :φ₂=>φ₂, :Q₁=>Q₁, :Q₂=>Q₂)
+    prescribe!(elements, :E=>E, :ν=>ν, :h=>h, :w=>w, :φ₁=>φ₁, :φ₂=>φ₂, :Q₁=>Q₁, :Q₂=>Q₂)
     @timeit to "calculate shape functions" set𝝭!(elements)
     L₂_w = L₂w(elements)
     L₂_φ = L₂φ(elements)
@@ -146,8 +166,12 @@ gmsh.finalize()
 
 # println(to)
 
-println("L₂ error of w: ", L₂_w)
-println("L₂ error of φ: ", L₂_φ)
-println("L₂ error of Q: ", L₂_Q)
+# println("L₂ error of w: ", L₂_w)
+# println("L₂ error of φ: ", L₂_φ)
+# println("L₂ error of Q: ", L₂_Q)
 
+logL₂w = log10(L₂_w)
+logL₂φ = log10(L₂_φ)
+logL₂Q = log10(L₂_Q)
+println("$logL₂w, $logL₂φ, $logL₂Q")
 
