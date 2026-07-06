@@ -7,16 +7,18 @@ import Gmsh: gmsh
 
 E = 10.92e6
 ν = 0.3
-h = 1e-0
+h = 1e-3
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
+
+ndiv = 32
 
 const to = TimerOutput()
 
 αʷ = 0e-7
 αᵠ = 1e8
 gmsh.initialize()
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_32.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv.msh")
 @timeit to "get entities" entities = getPhysicalGroups()
 @timeit to "get nodes" nodes = get𝑿ᵢ()
 
@@ -29,6 +31,7 @@ kˢˢ = zeros(2*nˢ,2*nˢ)
 kᵠʷ = zeros(2*nᵠ,nʷ)
 kˢʷ = zeros(2*nˢ,nʷ)
 kˢᵠ = zeros(2*nˢ,2*nᵠ)
+k̄ʷʷ = zeros(nʷ,nʷ)
 fˢ = zeros(2*nˢ)
 fᵠ = zeros(2*nᵠ)
 
@@ -39,19 +42,18 @@ integrationOrder = 2
     prescribe!(elements, :E=>E, :ν=>ν, :h=>h)
     @timeit to "calculate shape functions" set∇𝝭!(elements)
     @timeit to "calculate shape functions" set𝝭!(elements_Γ)
-    𝑎ᵠᵠ = ∫κκdΩ=>elements
     𝑎ˢᵠ = ∫QφdΩ=>elements
     𝑎ˢˢ = ∫QQdΩ=>elements
     𝑎ˢʷ = [
         ∫∇QwdΩ=>elements,
         ∫QwdΓ=>elements_Γ,
     ]
-    𝑎ʷʷ = ∫wwdΩ=>elements
-    @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
+    𝑎ʷʷ = ∫∇w∇wdΩ=>elements
+    𝑎̄ʷʷ = ∫wwdΩ=>elements
     @timeit to "assemble" 𝑎ˢˢ(kˢˢ)
     @timeit to "assemble" 𝑎ˢᵠ(kˢᵠ)
     @timeit to "assemble" 𝑎ˢʷ(kˢʷ)
-    @timeit to "assemble" 𝑎ʷʷ(kʷʷ)
+    @timeit to "assemble" 𝑎ʷʷ(k̄ʷʷ)
 end
 
 @timeit to "calculate ∫αwwdΓ ∫QwdΓ" begin
@@ -75,8 +77,6 @@ end
     prescribe!(elements_4, :α=>αʷ*E, :g=>0.0)
     𝑎ˢ = ∫QwdΓ=>elements_1∪elements_2∪elements_3∪elements_4
     @timeit to "assemble" 𝑎ˢ(kˢʷ,fˢ)
-    𝑎ʷ = ∫αwwdΓ=>elements_1∪elements_2∪elements_3∪elements_4
-    # @timeit to "assemble" 𝑎ʷ(kʷʷ)
 end
 
 gmsh.finalize()
@@ -89,7 +89,7 @@ print("nʷ≤⌊[nˢ]⌋-1:         ")
 n = floor(0.5*((1+8*nˢ)^0.5-3))
 n_diff = 0.5*n*(n+1)-nʷ
 n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
-βʷ² = eigvals(kˢʷ*(kʷʷ\kˢʷ'))
+βʷ² = eigvals(kˢʷ*(k̄ʷʷ\kˢʷ')*(1/ndiv)^(0))
 βʷ² = real.(βʷ²)
 βʷ²⁺ = βʷ²[βʷ² .≥ 1e2*eps()]
 βʷ⁺ = βʷ²⁺.^0.5
@@ -106,9 +106,9 @@ n_diff = 0.5*(nʷ+2nᵠ-min(nʷ,n))-nˢ
 n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
 println("nʷ = $nʷ, n = $n")
 
-βᵞ² = eigvals([k̃ᵠᵠ k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ]/Dᵇ)
+βᵞ² = eigvals([k̃ᵠᵠ k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ]/Dˢ*(1/ndiv)^(-2))
 βᵞ² = real.(βᵞ²)
-βᵞ²⁺ = βᵞ²[βᵞ² .≥ 1e2*eps()]
+βᵞ²⁺ = βᵞ²[βᵞ² .≥ 1e4*eps()]
 βᵞ⁺ = βᵞ²⁺.^0.5
 nᵞ⁺ = length(βᵞ⁺)
 βᵞ⁺ = min(βᵞ⁺...)

@@ -8,7 +8,7 @@ include("cal_area_support.jl")
 
 E = 10.92e6
 ν = 0.3
-h = 1e-0
+h = 1e-3
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
@@ -67,7 +67,6 @@ integrationOrder = 2
     @timeit to "calculate shape functions" set𝝭!(elements_w)
     @timeit to "calculate shape functions" set𝝭!(elements_Γ)
     @timeit to "calculate shape functions" set𝝭!(elements_w_Γ)
-    𝑎ᵠᵠ = ∫κκdΩ=>elements
     𝑎ˢᵠ = ∫QφdΩ=>elements
     𝑎ˢˢ = ∫QQdΩ=>elements
     𝑎ˢʷ = [
@@ -91,10 +90,10 @@ end
     @timeit to "get elements" elements_w_2 = getElements(nodes_w, entities["Γ²"], type, integrationOrder, sp, normal=true)
     @timeit to "get elements" elements_w_3 = getElements(nodes_w, entities["Γ³"], type, integrationOrder, sp, normal=true)
     @timeit to "get elements" elements_w_4 = getElements(nodes_w, entities["Γ⁴"], type, integrationOrder, sp, normal=true)
-    prescribe!(elements_w_1, :α=>αʷ*E, :g=>w)
-    prescribe!(elements_w_2, :α=>αʷ*E, :g=>w)
-    prescribe!(elements_w_3, :α=>αʷ*E, :g=>w)
-    prescribe!(elements_w_4, :α=>αʷ*E, :g=>w)
+    prescribe!(elements_w_1, :α=>αʷ*E, :g=>0.0)
+    prescribe!(elements_w_2, :α=>αʷ*E, :g=>0.0)
+    prescribe!(elements_w_3, :α=>αʷ*E, :g=>0.0)
+    prescribe!(elements_w_4, :α=>αʷ*E, :g=>0.0)
     @timeit to "calculate shape functions" set𝝭!(elements_1)
     @timeit to "calculate shape functions" set𝝭!(elements_2)
     @timeit to "calculate shape functions" set𝝭!(elements_3)
@@ -119,9 +118,9 @@ print("nʷ≤⌊[nˢ]⌋-1:         ")
 n = floor(0.5*((1+8*nˢ)^0.5-3))
 n_diff = 0.5*n*(n+1)-nʷ
 n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
-βʷ² = eigvals(kˢʷ*(kʷʷ\kˢʷ'))
+βʷ² = eigvals(kˢʷ*(kʷʷ\kˢʷ')*(1/ndiv)^(-2))
 βʷ² = real.(βʷ²)
-βʷ²⁺ = βʷ²[βʷ² .≥ 1e2*eps()]
+βʷ²⁺ = βʷ²[βʷ² .≥ 1e5*eps()]
 βʷ⁺ = βʷ²⁺.^0.5
 nʷ⁺ = length(βʷ⁺)
 # println(βʷ⁺)
@@ -137,9 +136,9 @@ n_diff = 0.5*(nʷ+2nᵠ-min(nʷ,n))-nˢ
 n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
 println("nʷ = $nʷ, n = $n")
 
-βᵞ² = eigvals([k̃ᵠᵠ k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ]/Dᵇ)
+βᵞ² = eigvals([k̃ᵠᵠ k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ]/Dˢ*(1/ndiv)^(-2))
 βᵞ² = real.(βᵞ²)
-βᵞ²⁺ = βᵞ²[βᵞ² .≥ 1e2*eps()]
+βᵞ²⁺ = βᵞ²[βᵞ² .≥ 1e4*eps()]
 βᵞ⁺ = βᵞ²⁺.^0.5
 nᵞ⁺ = length(βᵞ⁺)
 βᵞ⁺ = min(βᵞ⁺...)
