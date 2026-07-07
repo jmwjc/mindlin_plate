@@ -55,16 +55,16 @@ push!(nodes_w,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
 end
 nₑ = length(elements_φ)
 nᵠ = length(nodes_φ)
-nᵛ = nₑ*ApproxOperator.get𝑛𝑝(elements_q[1])
+nˢ = nₑ*ApproxOperator.get𝑛𝑝(elements_q[1])
 kʷʷ = zeros(nʷ,nʷ)
-kᵛʷ = zeros(2*nᵛ,nʷ)
+kˢʷ = zeros(2*nˢ,nʷ)
 kᵠʷ = zeros(2*nᵠ,nʷ)
 fʷ = zeros(nʷ)
 kᵠᵠ = zeros(2*nᵠ,2*nᵠ)
-kᵛᵛ = zeros(2*nᵛ,2*nᵛ)
-kᵛᵠ = zeros(2*nᵛ,2*nᵠ)
+kˢˢ = zeros(2*nˢ,2*nˢ)
+kˢᵠ = zeros(2*nˢ,2*nᵠ)
 fᵠ = zeros(2*nᵠ)
-fᵛ = zeros(2*nᵛ)
+fˢ = zeros(2*nˢ)
 
 @timeit to "calculate ∫κκdΩ" begin
     @timeit to "get elements" elements_w_Γ = getElements(nodes_w, entities["Γ"], eval(type_w), integrationOrder, sp, normal=true)
@@ -80,19 +80,19 @@ fᵛ = zeros(2*nᵛ)
     @timeit to "calculate shape functions" set𝝭!(elements_q_Γ)
     @timeit to "calculate shape functions" set𝝭!(elements_φ_Γ)
     𝑎ᵠᵠ = ∫κκdΩ=>elements_φ
-    𝑎ᵛᵠ = ∫QφdΩ=>(elements_q,elements_φ)
-    𝑎ᵛᵛ = ∫QQdΩ=>elements_q
-    # 𝑎ᵛʷ = ∫Q∇wdΩ=>(elements_q,elements_w)
-    𝑎ᵛʷ = [
+    𝑎ˢᵠ = ∫QφdΩ=>(elements_q,elements_φ)
+    𝑎ˢˢ = ∫QQdΩ=>elements_q
+    # 𝑎ˢʷ = ∫Q∇wdΩ=>(elements_q,elements_w)
+    𝑎ˢʷ = [
         ∫∇QwdΩ=>(elements_q,elements_w),
         ∫QwdΓ=>(elements_q_Γ,elements_w_Γ),
     ]
     # 𝑓ᵠ = ∫φmdΩ=>elements_φ
     𝑓ʷ = ∫wqdΩ=>elements_w
     @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
-    @timeit to "assemble" 𝑎ᵛᵛ(kᵛᵛ)
-    @timeit to "assemble" 𝑎ᵛᵠ(kᵛᵠ)
-    @timeit to "assemble" 𝑎ᵛʷ(kᵛʷ)
+    @timeit to "assemble" 𝑎ˢˢ(kˢˢ)
+    @timeit to "assemble" 𝑎ˢᵠ(kˢᵠ)
+    @timeit to "assemble" 𝑎ˢʷ(kˢʷ)
     @timeit to "assemble" 𝑓ʷ(fʷ)
     # @timeit to "assemble" 𝑓ᵠ(fᵠ)
 end
@@ -131,8 +131,8 @@ end
     @timeit to "calculate shape functions" set𝝭!(elements_w_2)
     @timeit to "calculate shape functions" set𝝭!(elements_w_3)
     @timeit to "calculate shape functions" set𝝭!(elements_w_4)
-    𝑎ᵛ = ∫QwdΓ=>(elements_q_1∪elements_q_2∪elements_q_3∪elements_q_4,elements_w_1∪elements_w_2∪elements_w_3∪elements_w_4)
-    @timeit to "assemble" 𝑎ᵛ(kᵛʷ,fᵛ)
+    𝑎ˢ = ∫QwdΓ=>(elements_q_1∪elements_q_2∪elements_q_3∪elements_q_4,elements_w_1∪elements_w_2∪elements_w_3∪elements_w_4)
+    @timeit to "assemble" 𝑎ˢ(kˢʷ,fˢ)
 end
 
 @timeit to "calculate error" begin
@@ -147,8 +147,8 @@ end
     @timeit to "calculate shape functions" set𝝭!(elements_q)
 end
 
-@timeit to "solve" d = [kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]\[fᵠ;fʷ;fᵛ]
-# println([kᵠᵠ kᵠʷ kᵛᵠ';kᵠʷ' kʷʷ kᵛʷ';kᵛᵠ kᵛʷ kᵛᵛ]*d .- [fᵠ;fʷ;fᵛ])
+@timeit to "solve" d = [kᵠᵠ kᵠʷ kˢᵠ';kᵠʷ' kʷʷ kˢʷ';kˢᵠ kˢʷ kˢˢ]\[fᵠ;fʷ;fˢ]
+# println([kᵠᵠ kᵠʷ kˢᵠ';kᵠʷ' kʷʷ kˢʷ';kˢᵠ kˢʷ kˢˢ]*d .- [fᵠ;fʷ;fˢ])
 nodes_q = 𝑿ᵢ[]
 for elm in elements_q
     for node in elm.𝓒
@@ -166,7 +166,7 @@ push!(nodes_q,:q₁=>d[2*nᵠ+nʷ+1:2:end], :q₂=>d[2*nᵠ+nʷ+2:2:end])
 end
 
 # dᵠ = zeros(2*nᵠ)
-# dᵛ = zeros(2*nᵛ)
+# dˢ = zeros(2*nˢ)
 # dʷ = zeros(nʷ)
 # for node in nodes_φ
 #     x = node.x
@@ -184,29 +184,29 @@ end
 # end
 
 # for i in 1:nₑ
-#     dᵛ[6*i-5:2:6*i] = [Q₁(0,0,0),Q₁(1,0,0)-Q₁(0,0,0),Q₁(0,1,0)-Q₁(0,0,0)]
-#     dᵛ[6*i-4:2:6*i] = [Q₂(0,0,0),Q₂(1,0,0)-Q₂(0,0,0),Q₂(0,1,0)-Q₂(0,0,0)]
+#     dˢ[6*i-5:2:6*i] = [Q₁(0,0,0),Q₁(1,0,0)-Q₁(0,0,0),Q₁(0,1,0)-Q₁(0,0,0)]
+#     dˢ[6*i-4:2:6*i] = [Q₂(0,0,0),Q₂(1,0,0)-Q₂(0,0,0),Q₂(0,1,0)-Q₂(0,0,0)]
 # end
 
-# println(kᵠᵠ*dᵠ+kᵛᵠ'*dᵛ - fᵠ)
-# println(norm(kᵠᵠ*dᵠ+kᵠʷ*dʷ+kᵛᵠ'*dᵛ - fᵠ))
-# println(kᵛᵛ*dᵛ)
-# println(kᵛʷ*dʷ)
-# println(kᵛᵛ*dᵛ + kᵛʷ*dʷ)
-# println(kᵛʷ*ones(nʷ).-fᵛ)
-# println(kᵠᵠ*dᵠ + kᵛᵠ'*dᵛ - fᵠ)
-# println(kᵛᵛ*dᵛ + kᵛᵠ*dᵠ + kᵛʷ*dʷ - fᵛ)
-# println(kᵛʷ'*dᵛ + kʷʷ*dʷ - fʷ)
-# println(kᵛᵠ*dᵠ)
-# println(kᵛʷ*dʷ)
+# println(kᵠᵠ*dᵠ+kˢᵠ'*dˢ - fᵠ)
+# println(norm(kᵠᵠ*dᵠ+kᵠʷ*dʷ+kˢᵠ'*dˢ - fᵠ))
+# println(kˢˢ*dˢ)
+# println(kˢʷ*dʷ)
+# println(kˢˢ*dˢ + kˢʷ*dʷ)
+# println(kˢʷ*ones(nʷ).-fˢ)
+# println(kᵠᵠ*dᵠ + kˢᵠ'*dˢ - fᵠ)
+# println(kˢˢ*dˢ + kˢᵠ*dᵠ + kˢʷ*dʷ - fˢ)
+# println(kˢʷ'*dˢ + kʷʷ*dʷ - fʷ)
+# println(kˢᵠ*dᵠ)
+# println(kˢʷ*dʷ)
 # println(kᵠʷ*dʷ)
-# err = kᵛʷ*dʷ
-# println(dᵛ'*kᵛʷ)
-# println(kᵛᵛ*dᵛ)
-# println(kᵛᵛ*dᵛ + kᵛʷ*dʷ)
+# err = kˢʷ*dʷ
+# println(dˢ'*kˢʷ)
+# println(kˢˢ*dˢ)
+# println(kˢˢ*dˢ + kˢʷ*dʷ)
 
 
-# points = zeros(3, nᵛ)
+# points = zeros(3, nˢ)
 # for node in nodes_q
 #     I = node.𝐼
 #     points[1,I] = node.x

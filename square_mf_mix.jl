@@ -7,37 +7,64 @@ import Gmsh: gmsh
 include("cal_area_support.jl")
 
 E = 10.92e6
+# E = 1.0
 ν = 0.3
 h = 1e-3
 Dᵇ = E*h^3/12/(1-ν^2)
 Dˢ = 5/6*E*h/(2*(1+ν))
 
-w(x,y,z) = 1/3*x^3*(x-1)^3*y^3*(y-1)^3-2*h^2/(5*(1-ν))*(y^3*(y-1)^3*x*(x-1)*(5*x^2-5*x+1)+x^3*(x-1)^3*y*(y-1)*(5*y^2-5*y+1))
-w₁(x,y,z) = (x-1)^2*x^2*(2*x-1)*(y-1)^3*y^3-2*h^2/(5*(1-ν))*((20*x^3-30*x^2+12*x-1)*(y-1)^3*y^3+3*(x-1)^2*x^2*(2*x-1)*(y-1)*y*(5*y^2-5*y+1))
-w₂(x,y,z) = (x-1)^3*x^3*(y-1)^2*y^2*(2*y-1)-2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2-5*x+1)*(y-1)^2*y^2*(2*y-1)+x^3*(x-1)^3*(20*y^3-30*y^2+12*y-1))
-φ₁(x,y,z) = y^3*(y-1)^3*x^2*(x-1)^2*(2*x-1)
-φ₂(x,y,z) = x^3*(x-1)^3*y^2*(y-1)^2*(2*y-1)
-q(x,y,z) = E*h^3/(12*(1-ν^2))*(12*y*(y-1)*(5*x^2-5*x+1)*(2*y^2*(y-1)^2+x*(x-1)*(5*y^2-5*y+1))+12*x*(x-1)*(5*y^2-5*y+1)*(2*x^2*(x-1)^2+y*(y-1)*(5*x^2-5*x+1)))
-# γ₁(x,y,z) = w₁(x,y,z)-φ₁(x,y,z)
-# γ₂(x,y,z) = w₂(x,y,z)-φ₂(x,y,z)
-γ₁(x,y,z) = -2*h^2/(5*(1-ν))*((20*x^3-30*x^2+12*x-1)*(y-1)^3*y^3+3*(x-1)^2*x^2*(2*x-1)*(y-1)*y*(5*y^2-5*y+1))
-γ₂(x,y,z) = -2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2-5*x+1)*(y-1)^2*y^2*(2*y-1)+x^3*(x-1)^3*(20*y^3-30*y^2+12*y-1))
-Q₁(x,y,z) = Dˢ*γ₁(x,y,z)
-Q₂(x,y,z) = Dˢ*γ₂(x,y,z)
-
-const to = TimerOutput()
-
 # ndiv = 4, nʷ = 12, 21
 # ndiv = 8, nʷ = 71, 97
 # ndiv = 16, nʷ = 238, 297
 # ndiv = 32, nʷ = 977, 1034, 1051, 1179
-ndiv = 32
+ndiv = 16
 # ndiv_w = Int(ndiv/2)
 ndiv_w = ndiv
-# nʷ = 12
+# nʷ = 435
 
-αʷ = 1e-10
+# h = 1e-0, αʷ = 1e1*Dˢ, 1e10*h^2
+# h = 1e-3, αʷ = 1e-5*Dˢ
+αʷ = 1e1*h^2
 αᵠ = 1e8
+
+# w(x,y,z) = 1/3*x^3*(x-1)^3*y^3*(y-1)^3-2*h^2/(5*(1-ν))*(y^3*(y-1)^3*x*(x-1)*(5*x^2-5*x+1)+x^3*(x-1)^3*y*(y-1)*(5*y^2-5*y+1))
+# w₁(x,y,z) = (x-1)^2*x^2*(2*x-1)*(y-1)^3*y^3-2*h^2/(5*(1-ν))*((20*x^3-30*x^2+12*x-1)*(y-1)^3*y^3+3*(x-1)^2*x^2*(2*x-1)*(y-1)*y*(5*y^2-5*y+1))
+# w₂(x,y,z) = (x-1)^3*x^3*(y-1)^2*y^2*(2*y-1)-2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2-5*x+1)*(y-1)^2*y^2*(2*y-1)+x^3*(x-1)^3*(20*y^3-30*y^2+12*y-1))
+# φ₁(x,y,z) = y^3*(y-1)^3*x^2*(x-1)^2*(2*x-1)
+# φ₂(x,y,z) = x^3*(x-1)^3*y^2*(y-1)^2*(2*y-1)
+# q(x,y,z) = E*h^3/(12*(1-ν^2))*(12*y*(y-1)*(5*x^2-5*x+1)*(2*y^2*(y-1)^2+x*(x-1)*(5*y^2-5*y+1))+12*x*(x-1)*(5*y^2-5*y+1)*(2*x^2*(x-1)^2+y*(y-1)*(5*x^2-5*x+1)))
+# γ₁(x,y,z) = w₁(x,y,z)-φ₁(x,y,z)
+# γ₂(x,y,z) = w₂(x,y,z)-φ₂(x,y,z)
+# # γ₁(x,y,z) = -2*h^2/(5*(1-ν))*((20*x^3-30*x^2+12*x-1)*(y-1)^3*y^3+3*(x-1)^2*x^2*(2*x-1)*(y-1)*y*(5*y^2-5*y+1))
+# # γ₂(x,y,z) = -2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2-5*x+1)*(y-1)^2*y^2*(2*y-1)+x^3*(x-1)^3*(20*y^3-30*y^2+12*y-1))
+# Q₁(x,y,z) = Dˢ*γ₁(x,y,z)
+# Q₂(x,y,z) = Dˢ*γ₂(x,y,z)
+
+w(x,y,z) = - (x^4*y - x*y^4 + x^3*y^2 - x^2*y^3)/6/Dᵇ + (x^3 + 3*x^2*y - 3*x*y^2 - y^3)/3/Dˢ
+w₁(x,y,z) = - (4*x^3*y - y^4 + 3*x^2*y^2 - 2*x*y^3)/6/Dᵇ + (x^2 + 2*x*y - y^2)/Dˢ
+w₂(x,y,z) = - (x^4 - 4*x*y^3 + 2*x^3*y - 3*x^2*y^2)/6/Dᵇ + (x^2 - 2*x*y - y^2)/Dˢ
+w₁₁(x,y,z) = - (6*x^2*y + 3*x*y^2 - y^3)/3/Dᵇ + 2*(x + y)/Dˢ
+w₂₂(x,y,z) = - (- 6*x*y^2 + x^3 - 3*x^2*y)/3/Dᵇ + 2*(- x - y)/Dˢ
+φ₁(x,y,z) = - (4*x^3*y - y^4 + 3*x^2*y^2 - 2*x*y^3)/6/Dᵇ
+φ₂(x,y,z) = - (x^4 - 4*x*y^3 + 2*x^3*y - 3*x^2*y^2)/6/Dᵇ
+φ₁₁(x,y,z) = - (6*x^2*y + 3*x*y^2 - y^3)/3/Dᵇ
+φ₁₂(x,y,z) = - (2*x^3 - 2*y^3 + 3*x^2*y - 3*x*y^2)/3/Dᵇ
+φ₂₁(x,y,z) = - (2*x^3 - 2*y^3 + 3*x^2*y - 3*x*y^2)/3/Dᵇ
+φ₂₂(x,y,z) = - (- 6*x*y^2 + x^3 - 3*x^2*y)/3/Dᵇ
+φ₁₁₁(x,y,z) = - (4*x*y + y^2)/Dᵇ
+φ₁₁₂(x,y,z) = - (2*x^2 + 2*x*y - y^2)/Dᵇ
+φ₂₂₁(x,y,z) = - (- 2*y^2 + x^2 - 2*x*y)/Dᵇ
+φ₂₂₂(x,y,z) = - (- 4*x*y - x^2)/Dᵇ
+φ₁₂₁(x,y,z) = - (2*x^2 + 2*x*y - y^2)/Dᵇ
+φ₁₂₂(x,y,z) = - (- 2*y^2 + x^2 - 2*x*y)/Dᵇ
+
+Q₁(x,y,z) = (x^2 + 2*x*y - y^2)
+Q₂(x,y,z) = (x^2 - 2*x*y - y^2)
+q(x,y,z) = 0.0
+
+
+const to = TimerOutput()
+
 
 gmsh.initialize()
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
@@ -50,10 +77,12 @@ sp = RegularGrid(xʷ,yʷ,zʷ,n = 3,γ = 5)
 @timeit to "get entities" entities = getPhysicalGroups()
 nʷ = length(nodes_w)
 elements_support = getElements(nodes_w, entities["Ω"], 1)
+s̄ = 1.5
 s, var_A = cal_area_support(elements_support)
-s₁ = 1.5*s*ones(nʷ)
-s₂ = 1.5*s*ones(nʷ)
-s₃ = 1.5*s*ones(nʷ)
+# s = 1/ndiv
+s₁ = s̄*s*ones(nʷ)
+s₂ = s̄*s*ones(nʷ)
+s₃ = s̄*s*ones(nʷ)
 push!(nodes_w,:s₁=>s₁,:s₂=>s₂,:s₃=>s₃)
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv.msh")
 @timeit to "get nodes" nodes = get𝑿ᵢ()
@@ -114,10 +143,10 @@ end
     prescribe!(elements_2, :α=>αᵠ*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
     prescribe!(elements_3, :α=>αᵠ*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
     prescribe!(elements_4, :α=>αᵠ*E, :g=>w, :g₁=>φ₁, :g₂=>φ₂, :n₁₁=>1.0, :n₁₂=>0.0, :n₂₂=>1.0)
-    prescribe!(elements_w_1, :α=>αʷ*E, :g=>w)
-    prescribe!(elements_w_2, :α=>αʷ*E, :g=>w)
-    prescribe!(elements_w_3, :α=>αʷ*E, :g=>w)
-    prescribe!(elements_w_4, :α=>αʷ*E, :g=>w)
+    prescribe!(elements_w_1, :α=>αʷ*Dˢ, :g=>w)
+    prescribe!(elements_w_2, :α=>αʷ*Dˢ, :g=>w)
+    prescribe!(elements_w_3, :α=>αʷ*Dˢ, :g=>w)
+    prescribe!(elements_w_4, :α=>αʷ*Dˢ, :g=>w)
     @timeit to "calculate shape functions" set𝝭!(elements_1)
     @timeit to "calculate shape functions" set𝝭!(elements_2)
     @timeit to "calculate shape functions" set𝝭!(elements_3)
@@ -165,7 +194,7 @@ push!(nodes_w,:d=>d[2*nᵠ+1:2*nᵠ+nʷ])
 
 @timeit to "calculate error" begin
     @timeit to "get elements" elements_w = getElements(nodes_w, entities["Ω"], type, 10, sp)
-    prescribe!(elements_w, :E=>E, :ν=>ν, :h=>h, :w=>w, :γ₁=>γ₁, :γ₂=>γ₂)
+    prescribe!(elements_w, :E=>E, :ν=>ν, :h=>h, :w=>w)
     @timeit to "calculate shape functions" set∇𝝭!(elements_w)
     L₂_w = L₂w(elements_w)
     @timeit to "get elements" elements_φ = getElements(nodes, entities["Ω"], 10)
