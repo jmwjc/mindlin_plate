@@ -1,22 +1,20 @@
 using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements
-import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫wwdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂w, L₂φ, L₂Q
+import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫∇w∇wdΩ, ∫wwdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂w, L₂φ, L₂Q
 
 using TimerOutputs, LinearAlgebra
 import Gmsh: gmsh
 
 E = 10.92e6
 ν = 0.3
-h = 1e-3
-Dᵇ = E*h^3/12/(1-ν^2)
-Dˢ = 5/6*E*h/(2*(1+ν))
+h = 1e-0
+Dᵇ = E/12/(1-ν^2)
+Dˢ = 5/6*E/h^2/(2*(1+ν))
 
 ndiv = 32
 
 const to = TimerOutput()
 
-αʷ = 0e-7
-αᵠ = 1e8
 gmsh.initialize()
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv.msh")
 @timeit to "get entities" entities = getPhysicalGroups()
@@ -31,7 +29,6 @@ kˢˢ = zeros(2*nˢ,2*nˢ)
 kᵠʷ = zeros(2*nᵠ,nʷ)
 kˢʷ = zeros(2*nˢ,nʷ)
 kˢᵠ = zeros(2*nˢ,2*nᵠ)
-k̄ʷʷ = zeros(nʷ,nʷ)
 fˢ = zeros(2*nˢ)
 fᵠ = zeros(2*nᵠ)
 
@@ -48,12 +45,11 @@ integrationOrder = 2
         ∫∇QwdΩ=>elements,
         ∫QwdΓ=>elements_Γ,
     ]
-    𝑎ʷʷ = ∫∇w∇wdΩ=>elements
-    𝑎̄ʷʷ = ∫wwdΩ=>elements
+    𝑎ʷʷ = ∫wwdΩ=>elements
     @timeit to "assemble" 𝑎ˢˢ(kˢˢ)
     @timeit to "assemble" 𝑎ˢᵠ(kˢᵠ)
     @timeit to "assemble" 𝑎ˢʷ(kˢʷ)
-    @timeit to "assemble" 𝑎ʷʷ(k̄ʷʷ)
+    @timeit to "assemble" 𝑎ʷʷ(kʷʷ)
 end
 
 @timeit to "calculate ∫αwwdΓ ∫QwdΓ" begin
@@ -89,9 +85,9 @@ print("nʷ≤⌊[nˢ]⌋-1:         ")
 n = floor(0.5*((1+8*nˢ)^0.5-3))
 n_diff = 0.5*n*(n+1)-nʷ
 n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
-βʷ² = eigvals(kˢʷ*(k̄ʷʷ\kˢʷ')*(1/ndiv)^(0))
+βʷ² = eigvals(kˢʷ*(kʷʷ\kˢʷ')*(1/ndiv)^(-2))
 βʷ² = real.(βʷ²)
-βʷ²⁺ = βʷ²[βʷ² .≥ 1e2*eps()]
+βʷ²⁺ = βʷ²[βʷ² .≥ 1e5*eps()]
 βʷ⁺ = βʷ²⁺.^0.5
 nʷ⁺ = length(βʷ⁺)
 βʷ⁺ = min(βʷ⁺...)

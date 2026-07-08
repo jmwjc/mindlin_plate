@@ -1,6 +1,6 @@
 using ApproxOperator
 import ApproxOperator.GmshImport: getPhysicalGroups, get𝑿ᵢ, getElements
-import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂w, L₂φ, L₂Q
+import ApproxOperator.MindlinPlate: ∫κκdΩ, ∫QQdΩ, ∫wwdΩ, ∫∇QwdΩ, ∫QwdΓ, ∫QφdΩ, ∫wqdΩ, ∫φmdΩ, ∫αwwdΓ, ∫αφφdΓ, ∫wVdΓ, ∫φMdΓ, L₂w, L₂φ, L₂Q
 
 using TimerOutputs, LinearAlgebra
 import Gmsh: gmsh
@@ -8,9 +8,9 @@ include("cal_area_support.jl")
 
 E = 10.92e6
 ν = 0.3
-h = 1e-3
-Dᵇ = E*h^3/12/(1-ν^2)
-Dˢ = 5/6*E*h/(2*(1+ν))
+h = 1e-0
+Dᵇ = E/12/(1-ν^2)
+Dˢ = 5/6*E/h^2/(2*(1+ν))
 
 const to = TimerOutput()
 
@@ -18,9 +18,9 @@ const to = TimerOutput()
 # ndiv = 8, nʷ = 71, 97
 # ndiv = 16, nʷ = 238, 297
 # ndiv = 32, nʷ = 977, 1034, 1051, 1179
-ndiv = 32
+ndiv = 4
 ndiv_w = ndiv
-# nʷ = 12
+# nʷ = 1034
 gmsh.initialize()
 # @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_irregular_$nʷ.msh")
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
@@ -74,7 +74,6 @@ integrationOrder = 2
         ∫QwdΓ=>(elements_Γ,elements_w_Γ),
     ]
     𝑎ʷʷ = ∫wwdΩ=>elements_w
-    @timeit to "assemble" 𝑎ᵠᵠ(kᵠᵠ)
     @timeit to "assemble" 𝑎ˢˢ(kˢˢ)
     @timeit to "assemble" 𝑎ˢᵠ(kˢᵠ)
     @timeit to "assemble" 𝑎ˢʷ(kˢʷ)

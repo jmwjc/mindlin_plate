@@ -8,12 +8,12 @@ import Gmsh: gmsh
 E = 10.92e6
 ν = 0.3
 h = 1e-3
-Dᵇ = E*h^3/12/(1-ν^2)
-Dˢ = 5/6*E*h/(2*(1+ν))
+Dᵇ = E/12/(1-ν^2)
+Dˢ = 5/6*E/h^2/(2*(1+ν))
 
 const to = TimerOutput()
 
-ndiv = 32
+ndiv = 4
 integrationOrder = 2
 
 gmsh.initialize()
