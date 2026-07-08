@@ -23,14 +23,14 @@ type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
 # ndiv_φ = 4, nʷ = 11, nˢ = 21
 # ndiv_φ = 4, nʷ = 11, nˢ = 21
-ndiv_φ = 8
-# ndiv_w = 4
-ndiv_q = 8
-nʷ = 11
+ndiv_φ = 10
+ndiv_w = 10
+ndiv_q = 10
+# nʷ = 11
 # nˢ = 21
 # ─── Deflection W ─────────────────────────────────────────
 # @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_irregular_$nʷ.msh")
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_w_$ndiv_w.msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()
 xʷ = nodes_w.x
 yʷ = nodes_w.y
