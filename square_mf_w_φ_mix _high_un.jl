@@ -57,9 +57,7 @@ type_φ = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_Q = :tri3
 type_M = :(PiecewisePolynomial{:Linear2D})
 # type_M = :(PiecewisePolynomial{:Quadratic2D})
-ndiv_φ = 16
-ndiv_w = 18
-# ndiv = ndiv_φ
+ndiv_φ = 8
 # ─── Deflection W ─────────────────────────────────────────
 @timeit to "open msh file" gmsh.open("msh/patchtest_high_un_tri3_$ndiv_w.msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()

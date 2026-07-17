@@ -9,8 +9,8 @@ include("cal_area_support.jl")
 E = 10.92e6
 ν = 0.3
 h = 1e-0
-Dᵇ = E*h^3/12/(1-ν^2)
-Dˢ = 5/6*E*h/(2*(1+ν))
+Dᵇ = E/12/(1-ν^2)
+Dˢ = 5/6*E/h^2/(2*(1+ν))
 integrationOrder = 2
 
 const to = TimerOutput()
@@ -24,13 +24,13 @@ type_M = :(PiecewisePolynomial{:Linear2D})
 # ndiv_φ = 4, nʷ = 11, nˢ = 21
 # ndiv_φ = 4, nʷ = 11, nˢ = 21
 ndiv_φ = 32
-ndiv_w = 32
-ndiv_q = 32
+ndiv_w = ndiv_φ-1
+ndiv_q = ndiv_φ
 nʷ = 1034
 # nˢ = 21
 # ─── Deflection W ─────────────────────────────────────────
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_irregular_$nʷ.msh")
-# @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
+# @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_irregular_$nʷ.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()
 xʷ = nodes_w.x
 yʷ = nodes_w.y
@@ -177,7 +177,8 @@ n_diff_c = 0.5*(nʷ+2nᵠ-min(nʷ,n))-nˢ
 n_diff_c≥0.0 ? println("✓:$n_diff_c") : println("×:$n_diff_c")
 println("nʷ = $nʷ, n = $n")
 
-βᵞ² = eigvals([k̃ᵠᵠ k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ]/Dˢ*s_φ^(-2))
+# βᵞ² = eigvals([k̃ᵠᵠ k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ]/Dˢ*s_φ^(-2))
+βᵞ² = eigvals([k̃ᵠᵠ k̃ᵠʷ;k̃ᵠʷ' k̃ʷʷ]/Dˢ*(1/ndiv_φ)^(-2))
 βᵞ² = real.(βᵞ²)
 βᵞ²⁺ = βᵞ²[βᵞ² .≥ 1e5*eps()]
 βᵞ⁺ = βᵞ²⁺.^0.5

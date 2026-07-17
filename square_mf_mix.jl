@@ -9,11 +9,11 @@ include("cal_area_support.jl")
 E = 10.92e6
 # E = 1.0
 ν = 0.3
-h = 1e-1
+h = 1e-3
 # Dᵇ = E/12/(1-ν^2)
 # Dˢ = 5/6*E/h^2/(2*(1+ν))
-Dᵇ = E*h^3/12/(1-ν^2)
-Dˢ = 5/6*E*h/(2*(1+ν))
+Dᵇ = E/12/(1-ν^2)
+Dˢ = 5/6*E/h^2/(2*(1+ν))
 
 # ndiv = 4, nʷ = 12, 21
 # ndiv = 8, nʷ = 71, 97
@@ -26,41 +26,60 @@ ndiv_w = ndiv-1
 
 # h = 1e-0, αʷ = 1e1*Dˢ, 1e10*h^2
 # h = 1e-3, αʷ = 1e-5*Dˢ
-αʷ = 1e1*h^2
+αʷ = 1e2*h^2
+# αʷ = 1e1*h^2
 αᵠ = 1e1*h^2
 
-# w(x,y,z) = 1/3*x^3*(x-1)^3*y^3*(y-1)^3-2*h^2/(5*(1-ν))*(y^3*(y-1)^3*x*(x-1)*(5*x^2-5*x+1)+x^3*(x-1)^3*y*(y-1)*(5*y^2-5*y+1))
-# w₁(x,y,z) = (x-1)^2*x^2*(2*x-1)*(y-1)^3*y^3-2*h^2/(5*(1-ν))*((20*x^3-30*x^2+12*x-1)*(y-1)^3*y^3+3*(x-1)^2*x^2*(2*x-1)*(y-1)*y*(5*y^2-5*y+1))
-# w₂(x,y,z) = (x-1)^3*x^3*(y-1)^2*y^2*(2*y-1)-2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2-5*x+1)*(y-1)^2*y^2*(2*y-1)+x^3*(x-1)^3*(20*y^3-30*y^2+12*y-1))
-# φ₁(x,y,z) = y^3*(y-1)^3*x^2*(x-1)^2*(2*x-1)
-# φ₂(x,y,z) = x^3*(x-1)^3*y^2*(y-1)^2*(2*y-1)
-# q(x,y,z) = E/(12*(1-ν^2))*(12*y*(y-1)*(5*x^2-5*x+1)*(2*y^2*(y-1)^2+x*(x-1)*(5*y^2-5*y+1))+12*x*(x-1)*(5*y^2-5*y+1)*(2*x^2*(x-1)^2+y*(y-1)*(5*x^2-5*x+1)))
-# γ₁(x,y,z) = -2*h^2/(5*(1-ν))*((20*x^3-30*x^2+12*x-1)*(y-1)^3*y^3+3*(x-1)^2*x^2*(2*x-1)*(y-1)*y*(5*y^2-5*y+1))
-# γ₂(x,y,z) = -2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2-5*x+1)*(y-1)^2*y^2*(2*y-1)+x^3*(x-1)^3*(20*y^3-30*y^2+12*y-1))
+w(x,y,z) = 1/3*x^3*(x-1)^3*y^3*(y-1)^3-2*h^2/(5*(1-ν))*(y^3*(y-1)^3*x*(x-1)*(5*x^2-5*x+1)+x^3*(x-1)^3*y*(y-1)*(5*y^2-5*y+1))
+w₁(x,y,z) = (x-1)^2*x^2*(2*x-1)*(y-1)^3*y^3-2*h^2/(5*(1-ν))*((20*x^3-30*x^2+12*x-1)*(y-1)^3*y^3+3*(x-1)^2*x^2*(2*x-1)*(y-1)*y*(5*y^2-5*y+1))
+w₂(x,y,z) = (x-1)^3*x^3*(y-1)^2*y^2*(2*y-1)-2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2-5*x+1)*(y-1)^2*y^2*(2*y-1)+x^3*(x-1)^3*(20*y^3-30*y^2+12*y-1))
+φ₁(x,y,z) = y^3*(y-1)^3*x^2*(x-1)^2*(2*x-1)
+φ₂(x,y,z) = x^3*(x-1)^3*y^2*(y-1)^2*(2*y-1)
+q(x,y,z) = E/(12*(1-ν^2))*(12*y*(y-1)*(5*x^2-5*x+1)*(2*y^2*(y-1)^2+x*(x-1)*(5*y^2-5*y+1))+12*x*(x-1)*(5*y^2-5*y+1)*(2*x^2*(x-1)^2+y*(y-1)*(5*x^2-5*x+1)))
+γ₁(x,y,z) = -2*h^2/(5*(1-ν))*((20*x^3-30*x^2+12*x-1)*(y-1)^3*y^3+3*(x-1)^2*x^2*(2*x-1)*(y-1)*y*(5*y^2-5*y+1))
+γ₂(x,y,z) = -2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2-5*x+1)*(y-1)^2*y^2*(2*y-1)+x^3*(x-1)^3*(20*y^3-30*y^2+12*y-1))
+Q₁(x,y,z) = Dˢ*γ₁(x,y,z)
+Q₂(x,y,z) = Dˢ*γ₂(x,y,z)
+
+# w(x,y,z) = - (x^4*y - x*y^4 + x^3*y^2 - x^2*y^3)/6/Dᵇ/h^3 + (x^3 + 3*x^2*y - 3*x*y^2 - y^3)/3/Dˢ/h^3
+# w₁(x,y,z) = - (4*x^3*y - y^4 + 3*x^2*y^2 - 2*x*y^3)/6/Dᵇ/h^3 + (x^2 + 2*x*y - y^2)/Dˢ/h^3
+# w₂(x,y,z) = - (x^4 - 4*x*y^3 + 2*x^3*y - 3*x^2*y^2)/6/Dᵇ/h^3 + (x^2 - 2*x*y - y^2)/Dˢ/h^3
+# w₁₁(x,y,z) = - (6*x^2*y + 3*x*y^2 - y^3)/3/Dᵇ/h^3 + 2*(x + y)/Dˢ/h^3
+# w₂₂(x,y,z) = - (- 6*x*y^2 + x^3 - 3*x^2*y)/3/Dᵇ/h^3 + 2*(- x - y)/Dˢ/h^3
+# φ₁(x,y,z) = - (4*x^3*y - y^4 + 3*x^2*y^2 - 2*x*y^3)/6/Dᵇ/h^3
+# φ₂(x,y,z) = - (x^4 - 4*x*y^3 + 2*x^3*y - 3*x^2*y^2)/6/Dᵇ/h^3
+# φ₁₁(x,y,z) = - (6*x^2*y + 3*x*y^2 - y^3)/3/Dᵇ/h^3
+# φ₁₂(x,y,z) = - (2*x^3 - 2*y^3 + 3*x^2*y - 3*x*y^2)/3/Dᵇ/h^3
+# φ₂₁(x,y,z) = - (2*x^3 - 2*y^3 + 3*x^2*y - 3*x*y^2)/3/Dᵇ/h^3
+# φ₂₂(x,y,z) = - (- 6*x*y^2 + x^3 - 3*x^2*y)/3/Dᵇ/h^3
+# φ₁₁₁(x,y,z) = - (4*x*y + y^2)/Dᵇ/h^3
+# φ₁₁₂(x,y,z) = - (2*x^2 + 2*x*y - y^2)/Dᵇ/h^3
+# φ₂₂₁(x,y,z) = - (- 2*y^2 + x^2 - 2*x*y)/Dᵇ/h^3
+# φ₂₂₂(x,y,z) = - (- 4*x*y - x^2)/Dᵇ/h^3
+# φ₁₂₁(x,y,z) = - (2*x^2 + 2*x*y - y^2)/Dᵇ/h^3
+# φ₁₂₂(x,y,z) = - (- 2*y^2 + x^2 - 2*x*y)/Dᵇ/h^3
+
+# M₁₁(x,y,z)= -Dᵇ*(φ₁₁(x,y,z)+ν*φ₂₂(x,y,z))
+# M₁₂(x,y,z)= -Dᵇ*(1-ν)*0.5*(φ₁₂(x,y,z)+φ₂₁(x,y,z))
+# M₂₂(x,y,z)= -Dᵇ*(ν*φ₁₁(x,y,z)+φ₂₂(x,y,z))
+# M₁₁₁(x,y,z)= -Dᵇ*(φ₁₁₁(x,y,z)+ν*φ₂₂₁(x,y,z))
+# M₁₂₂(x,y,z)= -Dᵇ*(1-ν)*φ₁₂₂(x,y,z)
+# M₁₂₁(x,y,z)= -Dᵇ*(1-ν)*φ₁₂₁(x,y,z)
+# M₂₂₂(x,y,z)= -Dᵇ*(ν*φ₁₁₂(x,y,z)+φ₂₂₂(x,y,z))
+
+# γ₁(x,y,z) = w₁(x,y,z) - φ₁(x,y,z)
+# γ₂(x,y,z) = w₂(x,y,z) - φ₂(x,y,z)
 # Q₁(x,y,z) = Dˢ*γ₁(x,y,z)
 # Q₂(x,y,z) = Dˢ*γ₂(x,y,z)
+# # Q₁(x,y,z) = (x^2 + 2*x*y - y^2)/h^3
+# # Q₂(x,y,z) = (x^2 - 2*x*y - y^2)/h^3
+# Q₁₁(x,y,z) =  2*(x + y)
+# Q₂₂(x,y,z) = -2*(x + y)
+# # q(x,y,z) = 0.0
+# q(x,y,z)=-Q₁₁(x,y,z)-Q₂₂(x,y,z)
+# m₁(x,y,z) = M₁₁₁(x,y,z)+M₁₂₂(x,y,z) - Q₁(x,y,z)
+# m₂(x,y,z) = M₁₂₁(x,y,z)+M₂₂₂(x,y,z) - Q₂(x,y,z)
 
-w(x,y,z) = - (x^4*y - x*y^4 + x^3*y^2 - x^2*y^3)/6/Dᵇ + (x^3 + 3*x^2*y - 3*x*y^2 - y^3)/3/Dˢ
-w₁(x,y,z) = - (4*x^3*y - y^4 + 3*x^2*y^2 - 2*x*y^3)/6/Dᵇ + (x^2 + 2*x*y - y^2)/Dˢ
-w₂(x,y,z) = - (x^4 - 4*x*y^3 + 2*x^3*y - 3*x^2*y^2)/6/Dᵇ + (x^2 - 2*x*y - y^2)/Dˢ
-w₁₁(x,y,z) = - (6*x^2*y + 3*x*y^2 - y^3)/3/Dᵇ + 2*(x + y)/Dˢ
-w₂₂(x,y,z) = - (- 6*x*y^2 + x^3 - 3*x^2*y)/3/Dᵇ + 2*(- x - y)/Dˢ
-φ₁(x,y,z) = - (4*x^3*y - y^4 + 3*x^2*y^2 - 2*x*y^3)/6/Dᵇ
-φ₂(x,y,z) = - (x^4 - 4*x*y^3 + 2*x^3*y - 3*x^2*y^2)/6/Dᵇ
-φ₁₁(x,y,z) = - (6*x^2*y + 3*x*y^2 - y^3)/3/Dᵇ
-φ₁₂(x,y,z) = - (2*x^3 - 2*y^3 + 3*x^2*y - 3*x*y^2)/3/Dᵇ
-φ₂₁(x,y,z) = - (2*x^3 - 2*y^3 + 3*x^2*y - 3*x*y^2)/3/Dᵇ
-φ₂₂(x,y,z) = - (- 6*x*y^2 + x^3 - 3*x^2*y)/3/Dᵇ
-φ₁₁₁(x,y,z) = - (4*x*y + y^2)/Dᵇ
-φ₁₁₂(x,y,z) = - (2*x^2 + 2*x*y - y^2)/Dᵇ
-φ₂₂₁(x,y,z) = - (- 2*y^2 + x^2 - 2*x*y)/Dᵇ
-φ₂₂₂(x,y,z) = - (- 4*x*y - x^2)/Dᵇ
-φ₁₂₁(x,y,z) = - (2*x^2 + 2*x*y - y^2)/Dᵇ
-φ₁₂₂(x,y,z) = - (- 2*y^2 + x^2 - 2*x*y)/Dᵇ
-
-Q₁(x,y,z) = Dˢ*(w₁(x,y,z)-φ₁(x,y,z))/h^3
-Q₂(x,y,z) = Dˢ*(w₂(x,y,z)-φ₂(x,y,z))/h^3
-q(x,y,z) = 0.0
 
 
 const to = TimerOutput()
@@ -68,6 +87,7 @@ const to = TimerOutput()
 
 gmsh.initialize()
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
+# @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_w_$ndiv_w.msh")
 # @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_irregular_$nʷ.msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()
 xʷ = nodes_w.x
@@ -220,5 +240,22 @@ println("L₂ error of w: ", log10(L₂_w))
 println("L₂ error of φ: ", log10(L₂_φ))
 println("L₂ error of Q: ", log10(L₂_Q))
 
+xs = [node.x for node in nodes]'
+ys = [node.y for node in nodes]'
+zs = [node.z for node in nodes]'
+points = [xs; ys; zs]
+cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE_STRIP, [xᵢ.𝐼 for xᵢ in elm.𝓒]) for elm in elements_φ]
 
+vtk_grid("./vtk/square_test.vtu", points, cells;
+         ascii=true, append=false, compress=false) do vtk
+
+    vtk["φ₁"] = [node.d₁ for node in nodes]
+    vtk["φ₂"] = [node.d₂ for node in nodes]
+    vtk["q₁"] = [node.q₁ for node in nodes]
+    vtk["q₂"] = [node.q₂ for node in nodes]
+    vtk["φ̄₁"] = [φ₁(node.x,node.y,0.0) for node in nodes]
+    vtk["φ̄₂"] = [φ₂(node.x,node.y,0.0) for node in nodes]
+    vtk["q̄₁"] = [Q₁(node.x,node.y,0.0) for node in nodes]
+    vtk["q̄₂"] = [Q₂(node.x,node.y,0.0) for node in nodes]
+end
 

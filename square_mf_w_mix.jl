@@ -25,7 +25,7 @@ const to = TimerOutput()
 
 gmsh.initialize()
 
-integrationOrder = 4
+integrationOrder = 2
 type_w = :(ReproducingKernel{:Linear2D,:□,:CubicSpline})
 type_φ = :tri3
 type_q = :tri3

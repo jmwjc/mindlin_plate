@@ -9,72 +9,70 @@ import Gmsh: gmsh
 include("cal_area_support.jl")
 E = 10.92e6
 ν = 0.3
-h = 1e-3
+h = 1e-0
 Dᵇ = E/12/(1-ν^2)
 Dˢ = 5/6*E/h^2/(2*(1+ν))
 
-ndiv_φ = 8
-ndiv_w = ndiv_φ-1
-ndiv = ndiv_φ
+ndiv_φ = 16
 αʷ = 0e1*h^2
 αᵠ = 0e1*h^2
 
-# w(x,y,z) = 1/3*x^3*(x-1)^3*y^3*(y-1)^3-2*h^2/(5*(1-ν))*(y^3*(y-1)^3*x*(x-1)*(5*x^2-5*x+1)+x^3*(x-1)^3*y*(y-1)*(5*y^2-5*y+1))
-# w₁(x,y,z) = (x-1)^2*x^2*(2*x-1)*(y-1)^3*y^3-2*h^2/(5*(1-ν))*((20*x^3-30*x^2+12*x-1)*(y-1)^3*y^3+3*(x-1)^2*x^2*(2*x-1)*(y-1)*y*(5*y^2-5*y+1))
-# w₂(x,y,z) = (x-1)^3*x^3*(y-1)^2*y^2*(2*y-1)-2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2-5*x+1)*(y-1)^2*y^2*(2*y-1)+x^3*(x-1)^3*(20*y^3-30*y^2+12*y-1))
-# φ₁(x,y,z) = y^3*(y-1)^3*x^2*(x-1)^2*(2*x-1)
-# φ₂(x,y,z) = x^3*(x-1)^3*y^2*(y-1)^2*(2*y-1)
-# φ₁₁(x,y,z) = y^3*(y-1)^3 * (2*x*(x-1)*(2*x-1)^2 + 2*x^2*(x-1)^2)
-# φ₁₂(x,y,z) = 3*y^2*(y-1)^2*(2*y-1) * (x^2*(x-1)^2*(2*x-1))
-# φ₂₁(x,y,z) = 3*x^2*(x-1)^2*(2*x-1) * (y^2*(y-1)^2*(2*y-1))
-# φ₂₂(x,y,z) = x^3*(x-1)^3 * (2*y*(y-1)*(2*y-1)^2 + 2*y^2*(y-1)^2)
-# q(x,y,z) = E/(12*(1-ν^2))*(12*y*(y-1)*(5*x^2-5*x+1)*(2*y^2*(y-1)^2+x*(x-1)*(5*y^2-5*y+1))+12*x*(x-1)*(5*y^2-5*y+1)*(2*x^2*(x-1)^2+y*(y-1)*(5*x^2-5*x+1)))
+w(x,y,z) = 1/3*x^3*(x-1)^3*y^3*(y-1)^3-2*h^2/(5*(1-ν))*(y^3*(y-1)^3*x*(x-1)*(5*x^2-5*x+1)+x^3*(x-1)^3*y*(y-1)*(5*y^2-5*y+1))
+w₁(x,y,z) = (x-1)^2*x^2*(2*x-1)*(y-1)^3*y^3-2*h^2/(5*(1-ν))*((20*x^3-30*x^2+12*x-1)*(y-1)^3*y^3+3*(x-1)^2*x^2*(2*x-1)*(y-1)*y*(5*y^2-5*y+1))
+w₂(x,y,z) = (x-1)^3*x^3*(y-1)^2*y^2*(2*y-1)-2*h^2/(5*(1-ν))*(3*(x-1)*x*(5*x^2-5*x+1)*(y-1)^2*y^2*(2*y-1)+x^3*(x-1)^3*(20*y^3-30*y^2+12*y-1))
+φ₁(x,y,z) = y^3*(y-1)^3*x^2*(x-1)^2*(2*x-1)
+φ₂(x,y,z) = x^3*(x-1)^3*y^2*(y-1)^2*(2*y-1)
+φ₁₁(x,y,z) = y^3*(y-1)^3 * (2*x*(x-1)*(2*x-1)^2 + 2*x^2*(x-1)^2)
+φ₁₂(x,y,z) = 3*y^2*(y-1)^2*(2*y-1) * (x^2*(x-1)^2*(2*x-1))
+φ₂₁(x,y,z) = 3*x^2*(x-1)^2*(2*x-1) * (y^2*(y-1)^2*(2*y-1))
+φ₂₂(x,y,z) = x^3*(x-1)^3 * (2*y*(y-1)*(2*y-1)^2 + 2*y^2*(y-1)^2)
+q(x,y,z) = E/(12*(1-ν^2))*(12*y*(y-1)*(5*x^2-5*x+1)*(2*y^2*(y-1)^2+x*(x-1)*(5*y^2-5*y+1))+12*x*(x-1)*(5*y^2-5*y+1)*(2*x^2*(x-1)^2+y*(y-1)*(5*x^2-5*x+1)))
 
-# Q₁(x,y,z) = Dˢ*(w₁(x,y,z)-φ₁(x,y,z))
-# Q₂(x,y,z) = Dˢ*(w₂(x,y,z)-φ₂(x,y,z))
-
-# M₁₁(x,y,z)= -Dᵇ*(φ₁₁(x,y,z)+ν*φ₂₂(x,y,z))
-# M₁₂(x,y,z)= -Dᵇ*(1-ν)*0.5*(φ₁₂(x,y,z)+φ₂₁(x,y,z))
-# M₂₂(x,y,z)= -Dᵇ*(ν*φ₁₁(x,y,z)+φ₂₂(x,y,z))
-
-w(x,y,z) = - (x^4*y - x*y^4 + x^3*y^2 - x^2*y^3)/6/Dᵇ/h^3 + (x^3 + 3*x^2*y - 3*x*y^2 - y^3)/3/Dˢ/h^3
-w₁(x,y,z) = - (4*x^3*y - y^4 + 3*x^2*y^2 - 2*x*y^3)/6/Dᵇ/h^3 + (x^2 + 2*x*y - y^2)/Dˢ/h^3
-w₂(x,y,z) = - (x^4 - 4*x*y^3 + 2*x^3*y - 3*x^2*y^2)/6/Dᵇ/h^3 + (x^2 - 2*x*y - y^2)/Dˢ/h^3
-w₁₁(x,y,z) = - (6*x^2*y + 3*x*y^2 - y^3)/3/Dᵇ/h^3 + 2*(x + y)/Dˢ/h^3
-w₂₂(x,y,z) = - (- 6*x*y^2 + x^3 - 3*x^2*y)/3/Dᵇ/h^3 + 2*(- x - y)/Dˢ/h^3
-φ₁(x,y,z) = - (4*x^3*y - y^4 + 3*x^2*y^2 - 2*x*y^3)/6/Dᵇ/h^3
-φ₂(x,y,z) = - (x^4 - 4*x*y^3 + 2*x^3*y - 3*x^2*y^2)/6/Dᵇ/h^3
-φ₁₁(x,y,z) = - (6*x^2*y + 3*x*y^2 - y^3)/3/Dᵇ/h^3
-φ₁₂(x,y,z) = - (2*x^3 - 2*y^3 + 3*x^2*y - 3*x*y^2)/3/Dᵇ/h^3
-φ₂₁(x,y,z) = - (2*x^3 - 2*y^3 + 3*x^2*y - 3*x*y^2)/3/Dᵇ/h^3
-φ₂₂(x,y,z) = - (- 6*x*y^2 + x^3 - 3*x^2*y)/3/Dᵇ/h^3
-φ₁₁₁(x,y,z) = - (4*x*y + y^2)/Dᵇ/h^3
-φ₁₁₂(x,y,z) = - (2*x^2 + 2*x*y - y^2)/Dᵇ/h^3
-φ₂₂₁(x,y,z) = - (- 2*y^2 + x^2 - 2*x*y)/Dᵇ/h^3
-φ₂₂₂(x,y,z) = - (- 4*x*y - x^2)/Dᵇ/h^3
-φ₁₂₁(x,y,z) = - (2*x^2 + 2*x*y - y^2)/Dᵇ/h^3
-φ₁₂₂(x,y,z) = - (- 2*y^2 + x^2 - 2*x*y)/Dᵇ/h^3
+Q₁(x,y,z) = Dˢ*(w₁(x,y,z)-φ₁(x,y,z))
+Q₂(x,y,z) = Dˢ*(w₂(x,y,z)-φ₂(x,y,z))
 
 M₁₁(x,y,z)= -Dᵇ*(φ₁₁(x,y,z)+ν*φ₂₂(x,y,z))
 M₁₂(x,y,z)= -Dᵇ*(1-ν)*0.5*(φ₁₂(x,y,z)+φ₂₁(x,y,z))
 M₂₂(x,y,z)= -Dᵇ*(ν*φ₁₁(x,y,z)+φ₂₂(x,y,z))
-M₁₁₁(x,y,z)= -Dᵇ*(φ₁₁₁(x,y,z)+ν*φ₂₂₁(x,y,z))
-M₁₂₂(x,y,z)= -Dᵇ*(1-ν)*φ₁₂₂(x,y,z)
-M₁₂₁(x,y,z)= -Dᵇ*(1-ν)*φ₁₂₁(x,y,z)
-M₂₂₂(x,y,z)= -Dᵇ*(ν*φ₁₁₂(x,y,z)+φ₂₂₂(x,y,z))
 
-γ₁(x,y,z) = w₁(x,y,z) - φ₁(x,y,z)
-γ₂(x,y,z) = w₂(x,y,z) - φ₂(x,y,z)
-Q₁(x,y,z) = Dˢ*γ₁(x,y,z)
-Q₂(x,y,z) = Dˢ*γ₂(x,y,z)
-# Q₁(x,y,z) = (x^2 + 2*x*y - y^2)/h^3
-# Q₂(x,y,z) = (x^2 - 2*x*y - y^2)/h^3
-Q₁₁(x,y,z) =  2*(x + y)
-Q₂₂(x,y,z) = -2*(x + y)
-# q(x,y,z) = 0.0
-q(x,y,z)=-Q₁₁(x,y,z)-Q₂₂(x,y,z)
-m₁(x,y,z) = M₁₁₁(x,y,z)+M₁₂₂(x,y,z) - Q₁(x,y,z)
-m₂(x,y,z) = M₁₂₁(x,y,z)+M₂₂₂(x,y,z) - Q₂(x,y,z)
+# w(x,y,z) = - (x^4*y - x*y^4 + x^3*y^2 - x^2*y^3)/6/Dᵇ/h^3 + (x^3 + 3*x^2*y - 3*x*y^2 - y^3)/3/Dˢ/h^3
+# w₁(x,y,z) = - (4*x^3*y - y^4 + 3*x^2*y^2 - 2*x*y^3)/6/Dᵇ/h^3 + (x^2 + 2*x*y - y^2)/Dˢ/h^3
+# w₂(x,y,z) = - (x^4 - 4*x*y^3 + 2*x^3*y - 3*x^2*y^2)/6/Dᵇ/h^3 + (x^2 - 2*x*y - y^2)/Dˢ/h^3
+# w₁₁(x,y,z) = - (6*x^2*y + 3*x*y^2 - y^3)/3/Dᵇ/h^3 + 2*(x + y)/Dˢ/h^3
+# w₂₂(x,y,z) = - (- 6*x*y^2 + x^3 - 3*x^2*y)/3/Dᵇ/h^3 + 2*(- x - y)/Dˢ/h^3
+# φ₁(x,y,z) = - (4*x^3*y - y^4 + 3*x^2*y^2 - 2*x*y^3)/6/Dᵇ/h^3
+# φ₂(x,y,z) = - (x^4 - 4*x*y^3 + 2*x^3*y - 3*x^2*y^2)/6/Dᵇ/h^3
+# φ₁₁(x,y,z) = - (6*x^2*y + 3*x*y^2 - y^3)/3/Dᵇ/h^3
+# φ₁₂(x,y,z) = - (2*x^3 - 2*y^3 + 3*x^2*y - 3*x*y^2)/3/Dᵇ/h^3
+# φ₂₁(x,y,z) = - (2*x^3 - 2*y^3 + 3*x^2*y - 3*x*y^2)/3/Dᵇ/h^3
+# φ₂₂(x,y,z) = - (- 6*x*y^2 + x^3 - 3*x^2*y)/3/Dᵇ/h^3
+# φ₁₁₁(x,y,z) = - (4*x*y + y^2)/Dᵇ/h^3
+# φ₁₁₂(x,y,z) = - (2*x^2 + 2*x*y - y^2)/Dᵇ/h^3
+# φ₂₂₁(x,y,z) = - (- 2*y^2 + x^2 - 2*x*y)/Dᵇ/h^3
+# φ₂₂₂(x,y,z) = - (- 4*x*y - x^2)/Dᵇ/h^3
+# φ₁₂₁(x,y,z) = - (2*x^2 + 2*x*y - y^2)/Dᵇ/h^3
+# φ₁₂₂(x,y,z) = - (- 2*y^2 + x^2 - 2*x*y)/Dᵇ/h^3
+
+# M₁₁(x,y,z)= -Dᵇ*(φ₁₁(x,y,z)+ν*φ₂₂(x,y,z))
+# M₁₂(x,y,z)= -Dᵇ*(1-ν)*0.5*(φ₁₂(x,y,z)+φ₂₁(x,y,z))
+# M₂₂(x,y,z)= -Dᵇ*(ν*φ₁₁(x,y,z)+φ₂₂(x,y,z))
+# M₁₁₁(x,y,z)= -Dᵇ*(φ₁₁₁(x,y,z)+ν*φ₂₂₁(x,y,z))
+# M₁₂₂(x,y,z)= -Dᵇ*(1-ν)*φ₁₂₂(x,y,z)
+# M₁₂₁(x,y,z)= -Dᵇ*(1-ν)*φ₁₂₁(x,y,z)
+# M₂₂₂(x,y,z)= -Dᵇ*(ν*φ₁₁₂(x,y,z)+φ₂₂₂(x,y,z))
+
+# γ₁(x,y,z) = w₁(x,y,z) - φ₁(x,y,z)
+# γ₂(x,y,z) = w₂(x,y,z) - φ₂(x,y,z)
+# Q₁(x,y,z) = Dˢ*γ₁(x,y,z)
+# Q₂(x,y,z) = Dˢ*γ₂(x,y,z)
+# # Q₁(x,y,z) = (x^2 + 2*x*y - y^2)/h^3
+# # Q₂(x,y,z) = (x^2 - 2*x*y - y^2)/h^3
+# Q₁₁(x,y,z) =  2*(x + y)
+# Q₂₂(x,y,z) = -2*(x + y)
+# # q(x,y,z) = 0.0
+# q(x,y,z)=-Q₁₁(x,y,z)-Q₂₂(x,y,z)
+# m₁(x,y,z) = M₁₁₁(x,y,z)+M₁₂₂(x,y,z) - Q₁(x,y,z)
+# m₂(x,y,z) = M₁₂₁(x,y,z)+M₂₂₂(x,y,z) - Q₂(x,y,z)
 
 
 const to = TimerOutput()
@@ -94,11 +92,12 @@ type_M = :(PiecewisePolynomial{:Linear2D})
 
 sʷ = 1.5
 sᵠ = 1.5
-# for ndiv_w = 10:25
-#  XLSX.openxlsx("xls/square_$(ndiv_φ)_tri3_$(ndiv_w).xlsx", mode="w") do xf
-# for ndiv = ndiv_w-2:32
- # ndiv_w = ndiv
- row = ndiv
+XLSX.openxlsx("xls/square_$(ndiv_φ).xlsx", mode="w") do xf
+row = 1
+for ndiv_w = 2:24
+    for ndiv = 2:24
+        row += 1
+
 # ─── Deflection W ─────────────────────────────────────────
 @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
 # @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_irregular_$nʷ.msh")
@@ -306,92 +305,65 @@ end
 # println(kˢᵠ*dᵠ+kˢʷ*dʷ+kˢˢ*dˢ+kˢᵐ*dᵐ - fˢ)
 # println(kᵐᵠ*dᵠ+kᵐʷ*dʷ+kˢᵐ'*dˢ+kᵐᵐ*dᵐ - fᵐ)
 # ──────────────────────────────────────────────────────────
-@timeit to "solve" d = [kᵠᵠ kᵠʷ kˢᵠ' kᵐᵠ';kᵠʷ' kʷʷ kˢʷ' kᵐʷ';kˢᵠ kˢʷ kˢˢ kˢᵐ;kᵐᵠ kᵐʷ kˢᵐ' kᵐᵐ]\[fᵠ;fʷ;fˢ;fᵐ]
-push!(nodes_φ,:d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ])
-push!(nodes_w,:d=>d[2*nᵠ+1:2*nᵠ+nʷ])
-push!(nodes,:q₁=>d[2*nᵠ+nʷ+1:2:2*nᵠ+nʷ+2*nˢ], :q₂=>d[2*nᵠ+nʷ+2:2:2*nᵠ+nʷ+2*nˢ])
-push!(nodes,:m₁₁=>d[2*nᵠ+nʷ+2*nˢ+1:3:end],:m₂₂=>d[2*nᵠ+nʷ+2*nˢ+2:3:end],:m₁₂=>d[2*nᵠ+nʷ+2*nˢ+3:3:end])
-# ──────────────────────────────────────────────────────────
-@timeit to "calculate error" begin
-    @timeit to "get elements" elements_φ = getElements(nodes_φ, entities["Ω"], eval(type_φ), 10, sp_φ)
-    @timeit to "get elements" elements_w = getElements(nodes_w, entities["Ω"], eval(type_w), 10, sp_w)
-    @timeit to "get elements" elements_q = getElements(nodes, entities["Ω"], 10)
-    # @timeit to "get elements" elements_m = getElements(nodes, entities["Ω"], 10)
-    prescribe!(elements_φ, :E=>E, :ν=>ν, :h=>h, :φ₁=>φ₁, :φ₂=>φ₂)
-    @timeit to "calculate shape functions" set𝝭!(elements_φ)
-    prescribe!(elements_w, :E=>E, :ν=>ν, :h=>h, :w=>w)
-    @timeit to "calculate shape functions" set𝝭!(elements_w)
-    prescribe!(elements_q, :E=>E, :ν=>ν, :h=>h, :Q₁=>Q₁, :Q₂=>Q₂)
-    @timeit to "calculate shape functions" set𝝭!(elements_q)
-    # prescribe!(elements_m, :E=>E, :ν=>ν, :h=>h, :M₁₁=>Q₁, :Q₂=>Q₂)
-    # @timeit to "calculate shape functions" set𝝭!(elements_q)
-end
+logL₂w = 0.0
+logL₂φ = 0.0
+logL₂Q = 0.0
+    try
+        d = [kᵠᵠ kᵠʷ kˢᵠ' kᵐᵠ';kᵠʷ' kʷʷ kˢʷ' kᵐʷ';kˢᵠ kˢʷ kˢˢ kˢᵐ;kᵐᵠ kᵐʷ kˢᵐ' kᵐᵐ]\[fᵠ;fʷ;fˢ;fᵐ]
+        push!(nodes_φ,:d₁=>d[1:2:2*nᵠ], :d₂=>d[2:2:2*nᵠ])
+        push!(nodes_w,:d=>d[2*nᵠ+1:2*nᵠ+nʷ])
+        push!(nodes,:q₁=>d[2*nᵠ+nʷ+1:2:2*nᵠ+nʷ+2*nˢ], :q₂=>d[2*nᵠ+nʷ+2:2:2*nᵠ+nʷ+2*nˢ])
+        push!(nodes,:m₁₁=>d[2*nᵠ+nʷ+2*nˢ+1:3:end],:m₂₂=>d[2*nᵠ+nʷ+2*nˢ+2:3:end],:m₁₂=>d[2*nᵠ+nʷ+2*nˢ+3:3:end])
+        # ──────────────────────────────────────────────────────────
+        @timeit to "calculate error" begin
+            @timeit to "get elements" elements_φ = getElements(nodes_φ, entities["Ω"], eval(type_φ), 10, sp_φ)
+            @timeit to "get elements" elements_w = getElements(nodes_w, entities["Ω"], eval(type_w), 10, sp_w)
+            @timeit to "get elements" elements_q = getElements(nodes, entities["Ω"], 10)
+            # @timeit to "get elements" elements_m = getElements(nodes, entities["Ω"], 10)
+            prescribe!(elements_φ, :E=>E, :ν=>ν, :h=>h, :φ₁=>φ₁, :φ₂=>φ₂)
+            @timeit to "calculate shape functions" set𝝭!(elements_φ)
+            prescribe!(elements_w, :E=>E, :ν=>ν, :h=>h, :w=>w)
+            @timeit to "calculate shape functions" set𝝭!(elements_w)
+            prescribe!(elements_q, :E=>E, :ν=>ν, :h=>h, :Q₁=>Q₁, :Q₂=>Q₂)
+            @timeit to "calculate shape functions" set𝝭!(elements_q)
+            # prescribe!(elements_m, :E=>E, :ν=>ν, :h=>h, :M₁₁=>Q₁, :Q₂=>Q₂)
+            # @timeit to "calculate shape functions" set𝝭!(elements_q)
+        end
 
-@timeit to "calculate error" begin
-    L₂_w = L₂w(elements_w)
-    L₂_φ = L₂φ(elements_φ)
-    L₂_Q = L₂Q(elements_q)
-end
-
-# points = zeros(3, nᵛ)
-# for node in nodes_q
-#     I = node.𝐼
-#     points[1,I] = node.x
-#     points[2,I] = node.y
-#     points[3,I] = node.z
-# end
-# # cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE, [node.𝐼 for node in elm.𝓒]) for elm in elements]
-# cells = [MeshCell(VTKCellTypes.VTK_TRIANGLE_STRIP, [node.𝐼 for node in elm.𝓒]) for elm in elements_q]
-# vtk_grid("vtk/square.vtu", points, cells) do vtk
-#     vtk["Q₁"] = [node.q₁ for node in nodes_q]
-#     vtk["Q₂"] = [node.q₂ for node in nodes_q]
-#     vtk["Q̄₁"] = [Q₁(node.x,node.y,node.z) for node in nodes_q]
-#     vtk["Q̄₂"] = [Q₂(node.x,node.y,node.z) for node in nodes_q]
-# end
-
-println(to)
-
-println("h=$h,Dᵇ=$Dᵇ,Dˢ=$Dˢ,αʷ=$αʷ,αᵠ=$αᵠ,nᵠ=$nᵠ,nʷ=$nʷ,nˢ=$nˢ,nᵐ=$nᵐ")
-print("nˢ≤ᵠ:         ")
-n_diff = nᵠ-nˢ
-n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
-print("nʷ≤⌊[nˢ]⌋-1:  ")
-n = floor(0.5*((1+8*nˢ)^0.5-3))
-n_diff = 0.5*n*(n+1)-nʷ
-n_diff≥0.0 ? println("✓:$n_diff") : println("×:$n_diff")
-println("L₂ error of w: ", log10(L₂_w))
-println("L₂ error of φ: ", log10(L₂_φ))
-println("L₂ error of Q: ", log10(L₂_Q))
+        @timeit to "calculate error" begin
+            L₂_w = L₂w(elements_w)
+            L₂_φ = L₂φ(elements_φ)
+            L₂_Q = L₂Q(elements_q)
+        end
+        logL₂w = log10(L₂_w)
+        logL₂φ = log10(L₂_φ)
+        logL₂Q = log10(L₂_Q)
+    catch e
+        if isa(e, SingularException) || isa(e, LAPACKException)
+            logL₂w = nothing
+            logL₂φ = nothing
+            logL₂Q = nothing
+        else
+            rethrow(e) 
+        end
+    end
 # ──────────────────────────────────────────────────────────
 
-#      sheet = xf[1]
-#      XLSX.rename!(sheet, "new_sheet")
-#      sheet["A1"] = "type w"
-#      sheet["B1"] = "nʷ"
-#      sheet["C1"] = "type φ"
-#      sheet["D1"] = "nᵠ"
-#      sheet["E1"] = "type Q"
-#      sheet["F1"] = "nˢ"
-#      sheet["G1"] = "type M"
-#      sheet["H1"] = "nᵐ"
-#      sheet["I1"] = "L₂w"
-#      sheet["J1"] = "L₂φ"
-#      sheet["K1"] = "L₂Q"
-#      sheet["A$row"] = "$type_w"
-#      sheet["B$row"] = nʷ
-#      sheet["C$row"] = "$type_φ"
-#      sheet["D$row"] = nᵠ
-#      sheet["E$row"] = "$type_Q"
-#      sheet["F$row"] = nˢ
-#      sheet["G$row"] = "$type_M"
-#      sheet["H$row"] = nᵐ
-#      sheet["I$row"] = log10(L₂_w)
-#      sheet["J$row"] = log10(L₂_φ)
-#      sheet["K$row"] = log10(L₂_Q)
-
-# end
-# end
-# end
+            sheet = xf[1]
+            XLSX.rename!(sheet, "new_sheet")
+            sheet["A1"] = "nʷ"
+            sheet["B1"] = "nˢ"
+            sheet["C1"] = "L₂w"
+            sheet["D1"] = "L₂φ"
+            sheet["E1"] = "L₂Q"
+            sheet["A$row"] = nʷ
+            sheet["B$row"] = nˢ
+            sheet["C$row"] = logL₂w
+            sheet["D$row"] = logL₂φ
+            sheet["E$row"] = logL₂Q
+        end
+    end
+end
 gmsh.finalize()
 
 

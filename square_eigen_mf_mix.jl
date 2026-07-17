@@ -18,12 +18,13 @@ const to = TimerOutput()
 # ndiv = 8, nʷ = 71, 97
 # ndiv = 16, nʷ = 238, 297
 # ndiv = 32, nʷ = 977, 1034, 1051, 1179
-ndiv = 4
-ndiv_w = ndiv
-# nʷ = 1034
+ndiv = 16
+ndiv_w = ndiv-8
+# nʷ = 97
 gmsh.initialize()
 # @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_irregular_$nʷ.msh")
-@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
+@timeit to "open msh file" gmsh.open("msh/patchtest_tri3_w_$ndiv_w.msh")
+# @timeit to "open msh file" gmsh.open("msh/patchtest_tri3_$ndiv_w.msh")
 @timeit to "get nodes" nodes_w = get𝑿ᵢ()
 xʷ = nodes_w.x
 yʷ = nodes_w.y
@@ -89,10 +90,10 @@ end
     @timeit to "get elements" elements_w_2 = getElements(nodes_w, entities["Γ²"], type, integrationOrder, sp, normal=true)
     @timeit to "get elements" elements_w_3 = getElements(nodes_w, entities["Γ³"], type, integrationOrder, sp, normal=true)
     @timeit to "get elements" elements_w_4 = getElements(nodes_w, entities["Γ⁴"], type, integrationOrder, sp, normal=true)
-    prescribe!(elements_w_1, :α=>αʷ*E, :g=>0.0)
-    prescribe!(elements_w_2, :α=>αʷ*E, :g=>0.0)
-    prescribe!(elements_w_3, :α=>αʷ*E, :g=>0.0)
-    prescribe!(elements_w_4, :α=>αʷ*E, :g=>0.0)
+    prescribe!(elements_w_1, :g=>0.0)
+    prescribe!(elements_w_2, :g=>0.0)
+    prescribe!(elements_w_3, :g=>0.0)
+    prescribe!(elements_w_4, :g=>0.0)
     @timeit to "calculate shape functions" set𝝭!(elements_1)
     @timeit to "calculate shape functions" set𝝭!(elements_2)
     @timeit to "calculate shape functions" set𝝭!(elements_3)
